@@ -20,8 +20,12 @@ developer, you should perform your own exploration of all other informational an
 Crucially, [task_info.md](./task_info.md) contains the actual requirements and guidelines for this website report,
 and [STYLE.md](./STYLE.md) contains formatting rules.
 Both should be read (using your Read tool) before making any content changes.
+
 Similarly, as we are reporting on our specific project, it is almost always important to also
 understand the project itself.
 Exploration of the source code base should start with their `AGENTS.md`.
 
-Do not read `CLAUDE.md`.
+## PS
+
+- Use `uv run mkdocs` to run MkDocs, and use `uv sync` or `uv add` to manage dependencies.
+- Do not read `CLAUDE.md`.
