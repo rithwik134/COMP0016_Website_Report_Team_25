@@ -4,7 +4,8 @@
 
 ## 1. Context
 
-THIS IS THE TRANSCRIPTION OF [Deliverables and Assessment Info PDF slides](./Deliverable_Assessment_Info.pdf).
+THIS IS THE TRANSCRIPTION OF [Deliverables and Assessment Info PDF slides](./Deliverable_Assessment_Info.pdf)
+(so you do not need to read the pdf, ever).
 
 This is the official guidance document for this website report that is part of a Systems Engineering course.
 This is generic to any project; it is important to understand our specific project at hand and

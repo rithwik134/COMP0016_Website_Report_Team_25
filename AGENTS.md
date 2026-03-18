@@ -22,3 +22,5 @@ which you should already have read (using your Read tool) before making any cont
 Similarly, as we are reporting on our specific project, it is almost always important to also
 understand the project itself.
 Exploration of the source code base should start with their `AGENTS.md`.
+
+Do not read `CLAUDE.md`.
