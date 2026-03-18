@@ -45,6 +45,16 @@ markdown_extensions:
       generic: true
   - pymdownx.snippets:
       base_path: ["."]
+  - pymdownx.blocks.caption:
+      types:
+        - name: caption
+          prefix: "Figure {}."
+        - name: table
+          prefix: "Table {}."
+  - pymdownx.blocks.admonition
+
+plugins:
+  - search
 
 extra_javascript:
   - javascripts/katex.js
