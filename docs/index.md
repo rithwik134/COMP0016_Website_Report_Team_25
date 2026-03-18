@@ -1,16 +1,33 @@
-# Welcome to MkDocs
+# COMP0016 Systems Engineering Project
 
-For full documentation visit [mkdocs.org](https://www.mkdocs.org).
+## Carbon-Aware AI Workload Scheduler – Team 25
 
-## Commands
+*Final Prototype Deliverables and Assessment*
 
-* `mkdocs serve` - Start the live-reloading docs server.
-* `mkdocs build` - Build the documentation site.
-* `mkdocs -h` - Print help message and exit.
+---
 
-## Project layout
+### Abstract
 
-    mkdocs.yml    # The configuration file.
-    docs/
-        index.md  # The documentation homepage.
-        ...       # Other markdown pages, images and other files.
+**Problem:** TODO
+
+**Solution:** TODO
+
+**Achievement & Impact:** TODO
+
+---
+
+### Project Demo Video
+
+*TODO: Embed 8-minute demo video*
+
+---
+
+### Development Team
+
+*TODO: Team bios with photos*
+
+---
+
+### Project Management
+
+*TODO: Gantt chart*

@@ -1,0 +1,1455 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Carbon-Aware AI Workload Scheduler – Final Report">
+      
+      
+      
+        <link rel="canonical" href="https://students.cs.ucl.ac.uk/2025/group25/ui-design/">
+      
+      
+        <link rel="prev" href="../algorithms/">
+      
+      
+        <link rel="next" href="../system-design/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.5">
+    
+    
+      
+        <title>UI Design - COMP0016 Systems Engineering – Team 25</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="green">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#ui-design" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="COMP0016 Systems Engineering – Team 25" class="md-header__button md-logo" aria-label="COMP0016 Systems Engineering – Team 25" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            COMP0016 Systems Engineering – Team 25
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              UI Design
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="green"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="green"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="COMP0016 Systems Engineering – Team 25" class="md-nav__button md-logo" aria-label="COMP0016 Systems Engineering – Team 25" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    COMP0016 Systems Engineering – Team 25
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../requirements/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Requirements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../research/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Research
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../algorithms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Algorithms
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    UI Design
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    UI Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#design-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Design Principles
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Design Principles">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#visibility-of-system-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Visibility of System Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#match-between-system-and-real-world" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Match Between System and Real World
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#consistency-and-standards" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Consistency and Standards
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-prevention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error Prevention
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aesthetic-and-minimalist-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Aesthetic and Minimalist Design
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#accessibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Accessibility
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hand-drawn-sketches" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hand-drawn Sketches
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Hand-drawn Sketches">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sketch-1-basic-orchestrator-panel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sketch 1: Basic Orchestrator Panel
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sketch-2-orchestrator-panel-with-constraints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sketch 2: Orchestrator Panel with Constraints
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#high-fidelity-wireframes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        High-Fidelity Wireframes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="High-Fidelity Wireframes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#orchestrator-panel-dashboard-view" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Orchestrator Panel — Dashboard View
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#orchestrator-panel-map-interaction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Orchestrator Panel — Map Interaction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deployment-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deployment Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usability-survey" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usability Survey
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usability Survey">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#survey-results-iteration-1-early-prototype" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Survey Results — Iteration 1 (Early Prototype)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#survey-results-iteration-3-final-prototype" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Survey Results — Iteration 3 (Final Prototype)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#design-iterations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Design Iterations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Design Iterations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#iteration-1-bar-charts-with-no-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Iteration 1 — Bar Charts with No Context
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Iteration 1 — Bar Charts with No Context">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-we-built" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We Built
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#problems-identified" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problems Identified
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#client-feedback-meeting-1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Client Feedback — Meeting 1
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#iteration-2-area-curves-with-greenness-and-load" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Iteration 2 — Area Curves with Greenness and Load
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Iteration 2 — Area Curves with Greenness and Load">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-we-changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-this-mattered" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why This Mattered
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#client-feedback-meeting-2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Client Feedback — Meeting 2
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#iteration-3-carbon-intensity-capacity-curves-and-hardware-specs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Iteration 3 — Carbon Intensity, Capacity Curves, and Hardware Specs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Iteration 3 — Carbon Intensity, Capacity Curves, and Hardware Specs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-we-changed_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#client-feedback-meeting-3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Client Feedback — Meeting 3
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#iteration-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Iteration Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#colour-scheme" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Colour Scheme
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#typography" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Typography
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../system-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../implementation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Implementation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../evaluation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendices/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendices
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="ui-design">UI Design</h1>
+<h2 id="design-principles">Design Principles</h2>
+<p>Our UI design was guided by established HCI principles, adapted for the Carbon-Aware AI Workload Scheduler — a tool used by data centre operators, sustainability officers, and researchers to schedule AI workloads in low-carbon time slots across multiple data centres.</p>
+<p>We grounded our approach in Nielsen's 10 Usability Heuristics and Don Norman's principles of good design. Because our users range from technical DevOps engineers to non-technical sustainability staff, we prioritised progressive disclosure — presenting complex scheduling and carbon data in layers, so users can access detail on demand without being overwhelmed.</p>
+<h3 id="visibility-of-system-status">Visibility of System Status</h3>
+<p>Carbon intensity values, scheduling progress, and data centre load are always visible on the dashboard. Users can see at a glance which time slots are green (low carbon) and which are red (high carbon), so they understand the environmental context of every scheduling decision.</p>
+<h3 id="match-between-system-and-real-world">Match Between System and Real World</h3>
+<p>We use domain-appropriate terminology — "carbon intensity" (gCO2/kWh), "workload", "capacity" — and map these to familiar visual conventions. Green-to-red colour gradients mirror traffic light semantics, making carbon data instantly interpretable.</p>
+<h3 id="consistency-and-standards">Consistency and Standards</h3>
+<p>The interface uses a unified component library (shadcn/ui on Next.js) for consistent spacing, typography, and interaction patterns. Chart styling, card layouts, and navigation behave identically across all views.</p>
+<h3 id="error-prevention">Error Prevention</h3>
+<p>Form validation prevents impossible parameters (e.g., deadline before start time). Data centre locations are selected from dropdowns populated by the Stats service's <code>/locations</code> endpoint, eliminating free-text errors. Hardware specifications use validated numeric inputs with sensible bounds.</p>
+<h3 id="aesthetic-and-minimalist-design">Aesthetic and Minimalist Design</h3>
+<p>Each view shows only the information relevant to the current task. The scheduling charts evolved through three iterations to present increasingly complex data — carbon intensity, load, capacity — without clutter. Advanced options such as prediction horizon and dynamic data centre configuration are accessible but not prominent by default.</p>
+<h3 id="accessibility">Accessibility</h3>
+<p>WCAG 2.1 AA compliant colour contrasts. Colour is never the sole indicator — icons, text labels, and patterns accompany all status colours. All interactive elements are keyboard-navigable with ARIA labels.</p>
+<hr />
+<h2 id="hand-drawn-sketches">Hand-drawn Sketches</h2>
+<p>Before writing any code, we produced hand-drawn sketches to explore the core layout of the Orchestrator Panel — the primary interface through which users interact with the scheduler. Each team member sketched independently, then we discussed and converged on the key layout elements.</p>
+<h3 id="sketch-1-basic-orchestrator-panel">Sketch 1: Basic Orchestrator Panel</h3>
+<p>The first sketch established the fundamental layout: a central map showing data centre locations with colour-coded carbon status (green/yellow/red dots), a stats panel on the right, deployment options, and a deployment status section at the bottom.</p>
+<p><img alt="Hand-drawn sketch 1 — Basic Orchestrator Panel" src="../images/sketch-1.png" /></p>
+<h3 id="sketch-2-orchestrator-panel-with-constraints">Sketch 2: Orchestrator Panel with Constraints</h3>
+<p>The second sketch added a constraints sidebar on the left (throughput, latency, capacity reserve sliders), giving users control over scheduling parameters before submitting a job. This became a key feature of the final design.</p>
+<p><img alt="Hand-drawn sketch 2 — Orchestrator Panel with Constraints" src="../images/sketch-2.png" /></p>
+<p>These sketches directly informed the high-fidelity wireframes we built in Figma before implementation.</p>
+<hr />
+<h2 id="high-fidelity-wireframes">High-Fidelity Wireframes</h2>
+<p>We translated our sketches into high-fidelity wireframes to validate the layout with our client before coding.</p>
+<h3 id="orchestrator-panel-dashboard-view">Orchestrator Panel — Dashboard View</h3>
+<p>The main dashboard realises the sketch layout: a map of data centre locations with carbon status indicators, constraints sliders on the left, deployment status bars at the bottom, and key stats (carbon savings, current metrics) on the right.</p>
+<p><img alt="Hi-fi wireframe — Orchestrator Panel dashboard" src="../images/hifi-wireframe-1.png" /></p>
+<h3 id="orchestrator-panel-map-interaction">Orchestrator Panel — Map Interaction</h3>
+<p>Hovering over a data centre on the map shows a tooltip with the location name, current status, load, and carbon intensity in gCO2/kWh. The workload distribution section on the right shows how shifting workloads between locations affects carbon savings.</p>
+<p><img alt="Hi-fi wireframe — Orchestrator Panel with map interaction" src="../images/hifi-wireframe-2.png" /></p>
+<h3 id="deployment-options">Deployment Options</h3>
+<p>After clicking "Analyze and Deploy", users are presented with deployment strategies ranked by carbon efficiency. Each option shows predicted carbon emissions (kgCO2), savings percentage, total time, and a timeline preview across data centres — letting users make an informed trade-off between speed and sustainability.</p>
+<p><img alt="Hi-fi wireframe — Deployment options with timeline previews" src="../images/hifi-deployment-options.png" /></p>
+<hr />
+<h2 id="usability-survey">Usability Survey</h2>
+<p>We conducted a usability survey with 18 UCL Computer Science students to evaluate our prototype at each design iteration. Participants completed three tasks — submitting a workload, interpreting the scheduling chart, and comparing data centre options — then filled out a System Usability Scale (SUS) questionnaire.</p>
+<h3 id="survey-results-iteration-1-early-prototype">Survey Results — Iteration 1 (Early Prototype)</h3>
+<table>
+<thead>
+<tr>
+<th>Question</th>
+<th style="text-align: center;">Strongly Disagree</th>
+<th style="text-align: center;">Disagree</th>
+<th style="text-align: center;">Neutral</th>
+<th style="text-align: center;">Agree</th>
+<th style="text-align: center;">Strongly Agree</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>I found it easy to submit a new workload</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">6</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td>The scheduling chart was easy to understand</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">6</td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td>I could tell why jobs were scheduled at specific times</td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">7</td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td>The interface looked professional and trustworthy</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">8</td>
+<td style="text-align: center;">3</td>
+</tr>
+<tr>
+<td>I would use this tool regularly if available</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">6</td>
+<td style="text-align: center;">7</td>
+<td style="text-align: center;">2</td>
+</tr>
+</tbody>
+</table>
+<p><strong>SUS Score (Iteration 1): 58.6 / 100</strong> — Below average usability.</p>
+<div class="admonition warning">
+<p class="admonition-title">Pain Point: No explanation for scheduling decisions</p>
+<p><em>"I can see green and grey bars, but I have no idea why the workload is scheduled at those times. There's nothing showing carbon levels or load."</em> — Participant 7</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Pain Point: Bar chart lacks context</p>
+<p><em>"The bars don't tell me much. I can see something is scheduled but not whether that's good or bad from a carbon perspective."</em> — Participant 11</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Pain Point: No history view</p>
+<p><em>"Once I submit a job, I can't find it again. There should be a way to check on previous schedules."</em> — Participant 4</p>
+</div>
+<div class="admonition success">
+<p class="admonition-title">Positive: Clean layout</p>
+<p><em>"The overall layout is clean. The map and constraints panel make sense. Just needs more information in the charts."</em> — Participant 15</p>
+</div>
+<h3 id="survey-results-iteration-3-final-prototype">Survey Results — Iteration 3 (Final Prototype)</h3>
+<table>
+<thead>
+<tr>
+<th>Question</th>
+<th style="text-align: center;">Strongly Disagree</th>
+<th style="text-align: center;">Disagree</th>
+<th style="text-align: center;">Neutral</th>
+<th style="text-align: center;">Agree</th>
+<th style="text-align: center;">Strongly Agree</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>I found it easy to submit a new workload</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">9</td>
+<td style="text-align: center;">6</td>
+</tr>
+<tr>
+<td>The scheduling chart was easy to understand</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">8</td>
+<td style="text-align: center;">6</td>
+</tr>
+<tr>
+<td>I could tell why jobs were scheduled at specific times</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">8</td>
+<td style="text-align: center;">6</td>
+</tr>
+<tr>
+<td>The interface looked professional and trustworthy</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">9</td>
+<td style="text-align: center;">7</td>
+</tr>
+<tr>
+<td>I would use this tool regularly if available</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">8</td>
+<td style="text-align: center;">6</td>
+</tr>
+</tbody>
+</table>
+<p><strong>SUS Score (Iteration 3): 79.2 / 100</strong> — "Good" usability, a 35% improvement.</p>
+<p><img alt="SUS scores across iterations" src="../images/sus-scores.png" /></p>
+<hr />
+<h2 id="design-iterations">Design Iterations</h2>
+<p>Our UI evolved through three major iterations, each informed by client meetings, TA feedback, and presentations to industry representatives (Microsoft, NTT).</p>
+<hr />
+<h3 id="iteration-1-bar-charts-with-no-context">Iteration 1 — Bar Charts with No Context</h3>
+<h4 id="what-we-built">What We Built</h4>
+<p>The first iteration displayed scheduling results as simple <strong>bar charts with green bars</strong> (scheduled workload) <strong>and grey bars</strong> (existing workload). The calendar view used the same bar chart representation. There was no carbon intensity curve, no greenness indicator, no load curve, and no way to understand <em>why</em> jobs were scheduled at particular times. There was also no tab for viewing previous jobs.</p>
+<p><img alt="Iteration 1 chart concept — green and grey bars only" src="../images/iteration1-chart-concept.png" />
+<em>Conceptual diagram illustrating the Iteration 1 bar chart style. Green bars represent scheduled workload, grey bars represent existing workload. No carbon or load context is provided.</em></p>
+<h4 id="problems-identified">Problems Identified</h4>
+<ul>
+<li>Users could see <em>what</em> was scheduled but not <em>why</em> — there was no indication of carbon intensity or load driving the scheduling decisions</li>
+<li>The calendar view was essentially the same bar chart, offering no additional insight</li>
+<li>No way to review previously submitted jobs or their outcomes</li>
+<li>The TA noted that the lack of explanatory curves made the scheduling appear arbitrary</li>
+</ul>
+<h4 id="client-feedback-meeting-1">Client Feedback — Meeting 1</h4>
+<div class="admonition quote">
+<p class="admonition-title">Client</p>
+<p><em>"It would be really nice to have a previous jobs tab, so someone can check up on the state of the schedule and remind themselves how it looked."</em></p>
+</div>
+<hr />
+<h3 id="iteration-2-area-curves-with-greenness-and-load">Iteration 2 — Area Curves with Greenness and Load</h3>
+<h4 id="what-we-changed">What We Changed</h4>
+<p>Based on client feedback and TA guidance, we made three significant changes:</p>
+<ol>
+<li>
+<p><strong>Previous Jobs tab:</strong> Added a dedicated tab where users can browse and review past scheduling results, addressing the client's request directly.</p>
+</li>
+<li>
+<p><strong>Switched from bars to area curves:</strong> Replaced the bar charts with smooth area curves — <strong>green filled area</strong> representing scheduled workload and <strong>grey filled area</strong> representing different scheduling alternatives. This gave a much clearer visual picture of how load was distributed over time.</p>
+</li>
+<li>
+<p><strong>Added greenness line and load curve:</strong> Our TA pointed out that users couldn't understand <em>why</em> the scheduler placed workloads at specific times. Since the scheduling algorithm depends on both the greenness of the grid (inverse of carbon intensity) and the current data centre load, we added both as overlay curves. The <strong>greenness line</strong> (dashed) shows when the grid is cleanest, and the <strong>load curve</strong> shows existing demand — together they explain the scheduler's decisions.</p>
+</li>
+</ol>
+<p><img alt="Iteration 2 chart concept — area curves with greenness and load" src="../images/iteration2-chart-concept.png" />
+<em>Conceptual diagram illustrating the Iteration 2 visualisation. Green area = scheduled workload, grey area = alternative schedules, dashed green line = greenness (inverse carbon intensity), blue line = current load.</em></p>
+<h4 id="why-this-mattered">Why This Mattered</h4>
+<p>Users could now see the reasoning behind every scheduling decision. When the greenness line peaks and the load curve dips, that's where the scheduler places workloads — and now that logic is visually obvious.</p>
+<h4 id="client-feedback-meeting-2">Client Feedback — Meeting 2</h4>
+<div class="admonition quote">
+<p class="admonition-title">Client</p>
+<p><em>"The curves are much better than the bars. Being able to see the greenness and load makes it obvious why things are scheduled where they are."</em></p>
+</div>
+<div class="admonition quote">
+<p class="admonition-title">Client</p>
+<p><em>"The previous jobs tab is exactly what we needed. Now we can go back and review how the schedule looked."</em></p>
+</div>
+<hr />
+<h3 id="iteration-3-carbon-intensity-capacity-curves-and-hardware-specs">Iteration 3 — Carbon Intensity, Capacity Curves, and Hardware Specs</h3>
+<h4 id="what-we-changed_1">What We Changed</h4>
+<p>The final iteration incorporated feedback from our supervisor, Microsoft and NTT representatives at the project presentations, and our own integration testing:</p>
+<ol>
+<li>
+<p><strong>Carbon intensity replaces greenness:</strong> We changed the greenness metric to <strong>carbon intensity</strong> (gCO2/kWh) to align with industry-standard units. Sustainability reports and carbon accounting use carbon intensity, not an invented "greenness" inverse. This made the tool immediately useful for professional reporting.</p>
+</li>
+<li>
+<p><strong>Capacity curve per data centre:</strong> Every data centre has a different total capacity. We added a <strong>capacity curve</strong> at the top of the chart. Load now <strong>grows downward from the capacity line</strong>, while scheduled load and existing load <strong>grow upward from the bottom</strong>. The gap between them — where there is empty space — represents how much more could be scheduled at that time slot. This visualisation makes capacity constraints immediately obvious.</p>
+</li>
+<li>
+<p><strong>Hardware specifications instead of estimated workload:</strong> Based on feedback from our supervisor and the Microsoft and NTT representatives, we replaced the "estimated workload amount" input with <strong>hardware specification fields</strong> (GPU type, number of GPUs, estimated runtime). This is what users actually know when submitting a job — they know what hardware they need, not an abstract workload unit.</p>
+</li>
+<li>
+<p><strong>Dynamic data centre management:</strong> Our supervisor requested the ability to dynamically add and remove data centres from the system, rather than working with a fixed set. We added a data centre management interface on the frontend.</p>
+</li>
+<li>
+<p><strong>Configurable prediction horizon:</strong> Users can now set how far ahead the scheduler should predict and plan (the length of the forecast window), giving flexibility for both short urgent jobs and long-term batch scheduling.</p>
+</li>
+</ol>
+<p><img alt="Iteration 3 chart concept — carbon intensity with capacity-based load" src="../images/iteration3-chart-concept.png" />
+<em>Conceptual diagram illustrating the Iteration 3 visualisation. Top panel: carbon intensity in gCO2/kWh. Bottom panel: DC capacity line at top, existing load (grey) and scheduled load (green) growing from the bottom, load from capacity (blue) growing downward. The white gap = remaining schedulable capacity.</em></p>
+<h4 id="client-feedback-meeting-3">Client Feedback — Meeting 3</h4>
+<div class="admonition quote">
+<p class="admonition-title">Client</p>
+<p><em>"This is exactly what we were looking for. The carbon intensity in proper units, the capacity visualisation — it all makes sense now. This is ready for real use."</em></p>
+</div>
+<div class="admonition quote">
+<p class="admonition-title">Client</p>
+<p><em>"The hardware specs input is much more practical. Our operators know what GPUs they need, not abstract compute units. Great change."</em></p>
+</div>
+<div class="admonition quote">
+<p class="admonition-title">Client</p>
+<p><em>"Being able to add data centres dynamically and set the prediction horizon makes this flexible enough for different deployment scenarios. Really pleased with how this turned out."</em></p>
+</div>
+<hr />
+<h2 id="iteration-summary">Iteration Summary</h2>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Iteration 1</th>
+<th>Iteration 2</th>
+<th>Iteration 3 (Final)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Chart Type</strong></td>
+<td>Green + grey bar charts</td>
+<td>Area curves (green + grey fill)</td>
+<td>Area curves with capacity line</td>
+</tr>
+<tr>
+<td><strong>Carbon Data</strong></td>
+<td>None</td>
+<td>Greenness line (inverse carbon intensity)</td>
+<td>Carbon intensity (gCO2/kWh)</td>
+</tr>
+<tr>
+<td><strong>Load Data</strong></td>
+<td>None</td>
+<td>Load curve overlay</td>
+<td>Load grows down from capacity curve</td>
+</tr>
+<tr>
+<td><strong>Capacity</strong></td>
+<td>Not shown</td>
+<td>Not shown</td>
+<td>Per-DC capacity curve; gap = remaining capacity</td>
+</tr>
+<tr>
+<td><strong>Previous Jobs</strong></td>
+<td>Not available</td>
+<td>Previous Jobs tab</td>
+<td>Previous Jobs tab</td>
+</tr>
+<tr>
+<td><strong>Job Input</strong></td>
+<td>Estimated workload amount</td>
+<td>Estimated workload amount</td>
+<td>Hardware specs (GPU type, count, runtime)</td>
+</tr>
+<tr>
+<td><strong>DC Management</strong></td>
+<td>Fixed set</td>
+<td>Fixed set</td>
+<td>Dynamic add/remove</td>
+</tr>
+<tr>
+<td><strong>Prediction Horizon</strong></td>
+<td>Fixed</td>
+<td>Fixed</td>
+<td>User-configurable</td>
+</tr>
+<tr>
+<td><strong>Calendar View</strong></td>
+<td>Same as bar chart</td>
+<td>Improved with curves</td>
+<td>Full carbon + capacity view</td>
+</tr>
+<tr>
+<td><strong>SUS Score</strong></td>
+<td>58.6</td>
+<td>71.4</td>
+<td>79.2</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="colour-scheme">Colour Scheme</h2>
+<p>Our colour palette conveys sustainability context through a semantic green-to-red scale for carbon intensity, with strong contrast ratios for accessibility.</p>
+<table>
+<thead>
+<tr>
+<th>Colour</th>
+<th>Hex</th>
+<th>Usage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Low Carbon / Scheduled</td>
+<td><code>#22C55E</code></td>
+<td>Low-intensity time slots, scheduled workload areas, positive outcomes</td>
+</tr>
+<tr>
+<td>Medium Carbon</td>
+<td><code>#EAB308</code></td>
+<td>Moderate-intensity time slots, warning states</td>
+</tr>
+<tr>
+<td>High Carbon</td>
+<td><code>#DC2626</code></td>
+<td>High-intensity time slots, alerts</td>
+</tr>
+<tr>
+<td>Primary / Interactive</td>
+<td><code>#2563EB</code></td>
+<td>Buttons, links, load curves, interactive elements</td>
+</tr>
+<tr>
+<td>Existing Load / Neutral</td>
+<td><code>#9CA3AF</code></td>
+<td>Existing workload, alternative schedule areas</td>
+</tr>
+<tr>
+<td>Text / Foreground</td>
+<td><code>#0A0A0A</code></td>
+<td>Primary text</td>
+</tr>
+<tr>
+<td>Background / Surface</td>
+<td><code>#F5F5F5</code></td>
+<td>Page and card backgrounds</td>
+</tr>
+<tr>
+<td>Capacity / Structure</td>
+<td><code>#1E293B</code></td>
+<td>Capacity curve lines, structural elements</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="typography">Typography</h2>
+<p>All text across the site and generated charts uses <strong>DejaVu Sans</strong> — the default typeface used by matplotlib. This ensures visual consistency between the website content and the matplotlib-generated scheduling charts and data visualisations embedded throughout the report.</p>
+<table>
+<thead>
+<tr>
+<th>Style</th>
+<th>Font</th>
+<th>Size</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Heading 1</td>
+<td>DejaVu Sans Bold</td>
+<td>36px</td>
+</tr>
+<tr>
+<td>Heading 2</td>
+<td>DejaVu Sans Bold</td>
+<td>30px</td>
+</tr>
+<tr>
+<td>Heading 3</td>
+<td>DejaVu Sans Bold</td>
+<td>24px</td>
+</tr>
+<tr>
+<td>Body</td>
+<td>DejaVu Sans Regular</td>
+<td>16px</td>
+</tr>
+<tr>
+<td>Chart labels</td>
+<td>DejaVu Sans Regular</td>
+<td>11px (matplotlib default)</td>
+</tr>
+<tr>
+<td>Code / Data values</td>
+<td>DejaVu Sans Mono</td>
+<td>14px</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "toc.integrate", "content.tabs.link"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
