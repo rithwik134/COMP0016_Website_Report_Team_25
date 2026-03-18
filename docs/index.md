@@ -8,9 +8,13 @@
 
 ### Abstract
 
-**Problem:** TODO
+**Problem:** Datacenters consume a lot of electricity. A majority of this electricity comes from non-renewable sources. As AI demands increase, carbon outputted from datacenters becomes increasingly a concern. Optimising placement of workloads can limit carbon emissions greatly, essential for sustainable development of AI
 
-**Solution:** TODO
+**Solution:** Our carbon aware scheduler has reduced carbon emissions from workloads through two dimensions:
+-Time (When we schedule a job) and, 
+-Location (where we schedule a job). 
+
+Carbon intensity tends to be lower at night, while datacenters in different regions may source cleaner energy from their electrical grid. AI workloads are also highly parallel, resulting in it being able to be split up easily into 5-minute slots. 
 
 **Achievement & Impact:** TODO
 
