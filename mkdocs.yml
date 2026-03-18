@@ -20,9 +20,12 @@ theme:
   font: false
   custom_dir: docs/overrides
   features:
+    - navigation.tabs
+    - navigation.tabs.sticky
     - navigation.sections
     - navigation.expand
     - navigation.top
+    - navigation.tracking
     - toc.integrate
     - content.tabs.link
 
