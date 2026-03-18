@@ -41,9 +41,19 @@ markdown_extensions:
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - pymdownx.tabbed:
       alternate_style: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.snippets:
+      base_path: ["."]
+
+extra_javascript:
+  - javascripts/katex.js
+  - https://unpkg.com/katex@0.16.7/dist/katex.min.js
+  - https://unpkg.com/katex@0.16.7/dist/contrib/auto-render.min.js
 
 extra_css:
   - stylesheets/extra.css
+  - https://unpkg.com/katex@0.16.7/dist/katex.min.css
 
 nav:
   - Home: index.md
