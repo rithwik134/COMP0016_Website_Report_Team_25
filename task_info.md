@@ -2,14 +2,13 @@
 
 ---
 
-THIS IS THE TRANSCRIPTION OF [Deliverables and Assessment Info PDF slides](./Deliverable_Assessment_Info.pdf).
-
 ## 1. Context
 
-This is the "Website Report" for the software we have developed (submodule at [code/](./code/) or see [GitHub Repo](https://github.com/akioweh/carbon-aware-ai-agents)).
-The content of this website is akin to a document report, but presented in a web format.
+THIS IS THE TRANSCRIPTION OF [Deliverables and Assessment Info PDF slides](./Deliverable_Assessment_Info.pdf).
 
-**Depending on the task, it is important that you understand the code repository and the documentation within.**
+This is the official guidance document for this website report that is part of a Systems Engineering course.
+This is generic to any project; it is important to understand our specific project at hand and
+analyze how we can best meet the requirements below while effectively communicating our work.
 
 ---
 
