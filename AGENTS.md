@@ -18,7 +18,8 @@ The content of this website is akin to a document report, but presented in a web
 developer, you should perform your own exploration of all other informational and documentation files.
 
 Crucially, [task_info.md](./task_info.md) contains the actual requirements and guidelines for this website report,
-which you should already have read (using your Read tool) before making any content changes.
+and [STYLE.md](./STYLE.md) contains formatting rules.
+Both should be read (using your Read tool) before making any content changes.
 Similarly, as we are reporting on our specific project, it is almost always important to also
 understand the project itself.
 Exploration of the source code base should start with their `AGENTS.md`.
