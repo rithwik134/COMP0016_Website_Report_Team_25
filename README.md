@@ -33,3 +33,6 @@ This uses `mkdocs`.
     ```bash
     mkdocs serve
     ```
+
+Note: `uv` uses Python 3.14; regular venv will use whatever system version you have,
+but any modern-ish version should be fine.
