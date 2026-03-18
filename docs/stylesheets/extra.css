@@ -1,0 +1,54 @@
+@font-face {
+  font-family: 'DejaVu Sans';
+  src: url('../fonts/DejaVuSans.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'DejaVu Sans';
+  src: url('../fonts/DejaVuSans-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'DejaVu Sans';
+  src: url('../fonts/DejaVuSans-Oblique.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: 'DejaVu Sans';
+  src: url('../fonts/DejaVuSans-BoldOblique.ttf') format('truetype');
+  font-weight: 700;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: 'DejaVu Sans Mono';
+  src: url('../fonts/DejaVuSansMono.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'DejaVu Sans Mono';
+  src: url('../fonts/DejaVuSansMono-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+:root {
+  --md-text-font: 'DejaVu Sans', sans-serif;
+  --md-code-font: 'DejaVu Sans Mono', monospace;
+}
+
+body {
+  font-family: 'DejaVu Sans', sans-serif;
+}
+
+code, pre {
+  font-family: 'DejaVu Sans Mono', monospace;
+}
