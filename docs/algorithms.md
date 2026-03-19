@@ -84,7 +84,6 @@ Instead of abstract workload units, users provide:
 The system performs a multi-stage translation to derive the internal parameters:
 
 1. **Workload Magnitude ($W$)**: Calculated in **Floating Point Operations (FLO)**.
-    $$\text{Workload (FLO)} = \text{TFLOPS}_{\text{Peak}} \times \text{Runtime} \times \text{Effectiveness}$$
 2. **Startup Energy Tax ($P$)**: This penalty includes the energy required for BIOS/POST surges, OS/container initialization, and the SXM/PCIe bus energy used to transfer model weights into VRAM.
 3. **Physical Throughput ($r_{i,j}$)**: The maximum workload completed in a 5-minute block is strictly capped by the physical throughput of the requested GPU cluster.
 
@@ -156,6 +155,5 @@ The Direct-XGBoost forecasting model achieved a 10.6% improvement in MAE, provid
 /// caption
 Performance improvement at different forecast horizons after weather integration.
 ///
-
 
 For a detailed breakdown of the forecasting model's development and evaluation, see the [Implementation](implementation.md) and [Testing](testing.md) pages.
