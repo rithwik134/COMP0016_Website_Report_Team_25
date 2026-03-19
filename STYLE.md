@@ -10,3 +10,5 @@
     My caption here
     ///
     ```
+
+- **List Styling**: Always use dashes (`-`) for bulleted lists instead of asterisks (`*`) to maintain consistency.
