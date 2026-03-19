@@ -1,88 +1,88 @@
 # Requirements
 
-idk what goes here tbf..?
-the brief the client gave us? well..:
+### Project Background
 
----
+AI workloads (e.g., training large models, inference services) are resource-intensive and often deployed without sustainability considerations. As AI demand is rapidly rising, it becomes increasingly important we prioritise reducing carbon emissions for sustainable development of AI technologies. NTTData, as a Green Software Foundation (GSF) Steering Member, has been working towards providing a trusted ecosystem of people, standard, and tools for delivering green software.
+As our client, NTTData assigned us the job of Investigating carbon‑aware scheduling within on‑premise and distributed datacentre environments. The aim is to make environmental performance a first‑class consideration in workload placement, using forecasted carbon‑intensity data and workload flexibility to shift execution toward cleaner periods and locations. By integrating prediction, scheduling, and impact reporting into a single system, the project provides a practical pathway for organisations to reduce emissions from AI operations without redesigning their existing pipelines.
 
-Goal: Optimize the placement, scheduling, and execution of AI workloads across cloud and on-premise environments to minimize environmental impact. The framework evaluates energy use, carbon emissions, water consumption, and critical-materials wear, applying the Software Carbon Intensity (SCI) metric from the Green Software Foundation.
+### Project Goals
 
-1. Problem & Objectives
+The overarching goal is to reduce the environmental impact of AI workloads by optimising when and where they run, while keeping the system realistic for real‑world deployment.
+More specifically, the framework aims to:
+- Minimise emissions by selecting execution windows and locations with lower carbon intensity.
+- Enable carbon‑aware decisions using both forecasted and historical grid‑intensity data.
+- Take advantage of workload flexibility by breaking parallelisable jobs into short, schedulable blocks.
+- Evaluate results using recognised green‑software metrics, including the Software Carbon Intensity (SCI) methodology.
+- Deliver an end‑to‑end system—covering prediction, scheduling, and results visualisation—that teams and organisations can adopt directly.
 
-Problem. AI workloads (e.g., training large models, inference services) are resource-intensive and often deployed without sustainability considerations. Grid carbon intensity varies by region and time, data centers differ in PUE/WUE, and on-premise deployments can be underutilized. Optimizing across hybrid (cloud + on-prem) options is rarely done.
+### Requirement Gathering
+TO-DO
 
-Objectives.
+### Personas
+To-DO
 
-    Minimize lifecycle impact per AI workload: CO₂e, kWh, water (L), and critical-materials wear using SCI.
-    Optimize across multi-cloud and on-premise clusters.
-    Respect SLOs (latency, throughput), budgets, and compliance/policy.
-    Provide explainable, auditable sustainability decisions.
+### Use Cases
+TO-DO
 
-Non-functional. Pluggable data sources, low-latency decision-making, integration with AI platforms (MLflow, Kubeflow, PyTorch, TensorFlow), strong observability.
+### MoSCoW Requirments
+#### Functional Requirements
 
-1. Key Concepts & Data Inputs
+Must Have
 
-   Grid carbon intensity (real-time & forecast).
-   Facility efficiency: PUE/WUE for cloud + on-prem facilities.
-   On-prem telemetry: server power draw, cooling overhead, utilization.
-   SCI metric:
-   SCI = (Energy × Carbon Intensity) / Functional Unit
-   Functional Unit examples: per training epoch, per inference request, per GB processed.
-   Temporal flexibility: allowable scheduling shifts.
-   Hardware reuse: maximize existing on-prem clusters before provisioning new cloud capacity.
-   Resource right-sizing: GPUs/CPUs sized per workload.
-   Cost context: on-prem TCO + cloud rates.
-   Compliance: residency, sovereignty, and internal sustainability targets.
+- Ingest AI workload parameters and generate valid schedules.
+- Optimize scheduling across time and datacenter location to reduce emissions.
+- Use carbon-intensity signals in scheduling decisions.
+- Calculate and report emissions for optimized schedules.
+- Provide API and UI outputs for scheduling and results.
 
-2. Scoring & Optimization Model
+Should Have
 
-Vector per candidate (cloud region or on-prem site):
+- Compare optimized schedules against a baseline to show savings.
+- Split workloads into short execution blocks for finer optimization.
+- Include datacenter-level operating factors in optimization decisions.
+- Persist schedule history and enable previous-job review.
+- Support configurable scheduling constraints and optimization settings.
+- Handle incomplete upstream data with fallback behavior.
 
-    SCI_i (kgCO₂e per functional unit)
-    W_i (L water per functional unit)
-    M_i (critical-materials wear proxy)
-    K_i (cost), L_i (latency), P_i (policy risk)
+Could Have 
 
-Filters. Discard infeasible (policy violations, unavailable hardware, SLO breaches).
+- Richer visual reporting for trends and per-job impact.
+- Multi-objective readiness for carbon, timing, and operational trade-offs.
+- Support dynamic datacenter options configured in the UI
+- Generate own forecast of carbon intensity using factors that influence carbon intensity (e.g. - weather)
 
-Objective. Minimize SCI, then water, then cost — configurable via lexicographic or weighted scalarization.
+Won’t Have 
 
-Example score:
-Score_i = wSCI·SCÎ_i + wW·Ŵ_i + wM·M̂_i + wK·K̂_i + wL·L̂_i – ReuseBonus_i
+- Full cross-cloud autonomous orchestration and billing integration.
+- Embodied carbon accounting of hardware lifecycle.
 
-Temporal optimization. Deferrable training jobs can shift across hours/days to align with clean-energy windows.
+#### Non-Functional Requirements (MoSCoW)
 
-Hybrid optimization. Compare cloud vs on-prem cost and SCI to choose best placement.
+Must Have
 
-1. Agent Responsibilities (Hybrid Focus)
+- Reliable execution of core scheduling and prediction flows.
+- Accurate and consistent impact calculations.
+- Clear and interpretable outputs for non-specialist users.
+- Standards-aligned impact reporting using SCI-oriented principles.
 
-   Carbon & Energy Intelligence Agent. Considers cloud grid mix and on-prem facility power sources.
-   Capacity & Placement Agent. Checks cloud quotas and on-prem cluster utilization.
-   Optimizer Agent. Balances cloud elasticity with on-prem sustainability.
-   Feedback/Accounting Agent. Issues SCI per workload whether cloud-hosted or on-prem.
+Should Have
 
-2. Workload Contract (AI-specific)
+- Modular, testable architecture across services and UI.
+- End-to-end traceability from workload input to impact output.
+- Interactive performance for schedule generation and result display.
+- Scalability for larger job volumes and longer planning horizons.
+- Observability through logs and diagnostics.
+- Reproducible outputs under fixed inputs and configuration.
+- Robust input validation and safe API handling.
+- Audit-friendly historical records for review and reporting.
 
-   workload_id, type (training, inference, batch AI job)
-   functional_unit (epoch, request, GB)
-   resources (GPU/TPU/CPU, memory, storage)
-   temporal_flexibility (earliest_start, latest_finish)
-   policy (allowed providers/sites)
-   budget + objective_profile (weights)
+Could Have (Completed Enhancements)
 
-Outputs: placement decision (cloud region/on-prem site, timing, shape), expected SCI, water, cost, compliance proof.
+- Extended analytics views for stakeholder reporting.
+- Configurability for organization-specific policy tuning.
+- Readiness for broader enterprise integration paths.
 
-1. Worked SCI Examples
+Won’t Have (Current Scope)
 
-Training (Cloud)
-
-    Energy: 4,000 kWh, Intensity 0.25 kg/kWh, Emissions = 1,000 kgCO₂e.
-    Functional unit: 20 epochs → SCI = 50 kg/epoch.
-    If deferred to cleaner grid (0.10 kg/kWh) → SCI = 20 kg/epoch.
-
-Inference (On-Prem)
-
-    1M requests/day, on-prem cluster draws 50 kWh/day, intensity 0.15 kg/kWh.
-    Emissions = 7.5 kg/day → SCI = 7.5 / 1,000,000 = 7.5×10⁻⁶ kg = 7.5 mg/request.
-    If moved to cloud with dirtier grid (0.40 kg/kWh) → SCI = 20 mg/request.
-    Optimizer favors on-prem in this scenario.
+- Formal enterprise-grade HA/SLA guarantees.
+- Full IAM and compliance certification stack.
