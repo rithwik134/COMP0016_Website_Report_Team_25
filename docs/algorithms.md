@@ -4,46 +4,44 @@ The core of the Carbon-Aware AI Agent is its **Spatio-Temporal Scheduler**, a hi
 
 ---
 
-## The Core Dependency: Carbon Intelligence
+## The Scheduling Problem
 
-The scheduler does not operate in a vacuum. Its ability to optimize is strictly dependent on high-fidelity, regional carbon intensity data provided by the **Forecasting Service (Stats Component)**.
+Training and running large AI models consumes a massive amount of energy. However, these workloads often have inherent flexibility: they do not strictly need to run immediately, nor do they strictly need to run in a single location. By forecasting the carbon intensity of local energy grids, we can strategically route and pause work across different global data centers and time windows to take advantage of periods when the grid is "greenest" (e.g., when solar or wind generation is high).
 
-### The Scheduler-Stats Relationship
+However, fully exploiting this spatio-temporal flexibility presents significant algorithmic challenges:
 
-The scheduler consumes the following data streams to build its optimization model:
+1. **The Discontinuity Overhead:** Flexibility is not completely "free". Every time a compute cluster starts a new run, it must spend energy and time on operations that do not directly advance the mathematical task—such as spinning up the OS container, warming up the GPU, and transferring gigabytes of model weights into VRAM. If a generic scheduler fragments the job too much by constantly pausing and resuming to chase marginal carbon drops, these initialization overheads will rapidly negate any carbon benefits.
+2. **Computational Hardness:** If we model this scheduling space continuously, allowing arbitrary workloads to shift smoothly across infinite fractions of time, the optimization becomes mathematically intractable (resembling a continuous non-linear knapsack problem with step-discontinuity penalties).
 
-* **Carbon Intensity Forecasts ($c_i$):** Predicted gCO2/kWh for each region $i$ at 30-minute intervals.
-* **Grid Load Forecasts ($l_i$):** Background load at each data center to calculate available headroom.
-* **Physical Capacity ($r_i$):** The maximum compute throughput of each location.
+### Discretization and Formalization
 
-Without these forecasts, the scheduler defaults to a greedy "earliest-available" placement, losing the benefits of grid flexibility. The relationship is formalized by the cost function $c_i(\text{time})$, which the scheduler minimizes over the allowed execution window.
+To overcome the hardness of a continuous model while guaranteeing a globally optimal solution, we discretize the scheduling task. We model it as a constrained resource allocation problem over a discrete 2D surface of $m$ data center locations and $n$ time blocks. We also discretize the total requested workload into high-resolution uniform units (e.g., 10,000 levels). Because multi-day AI workloads are astronomically large, the rounding errors from this discretization are mathematically negligible, yet it transforms the continuous formulation into a deterministic state space solvable via **Dynamic Programming (DP)**.
 
----
+To calculate the optimum, the scheduler relies on continuous external intelligence data streams for each location $k$ and time block $i$:
 
-## Problem Formalization
-
-The scheduling task is modeled as a constrained optimization problem over a 2D surface of $m$ locations and $n$ time blocks.
+- **Carbon Intensity ($c_{k,i}$):** Forecasted gCO2/kWh.
+- **Available Headroom ($h_{k,i}$):** The maximum physical compute capacity ($r_{k,i}$) minus the forecasted background load ($l_{k,i}$).
 
 ### The Objective Function
 
-Minimize the total additional carbon cost incurred across all locations $i$ and time slots $j$:
+Minimize the total additional carbon cost incurred across all locations $k$ and time blocks $i$:
 
-$$\text{Minimize } \sum_{i,j} [c_{i,j}(l_{i,j} + w_{i,j}) - c_{i,j}(l_{i,j})]$$
+$$\text{Minimize } \sum_{k,i} [\text{Cost}_{k,i}(l_{k,i} + w_{k,i}) - \text{Cost}_{k,i}(l_{k,i})]$$
 
 Where:
 
-* $w_{i,j}$ is the workload allocated to location $i$ at time $j$.
-* $l_{i,j}$ is the existing background load.
-* $c_{i,j}$ is the non-decreasing cost function (Carbon Intensity $\times$ Energy Efficiency).
+- $w_{k,i}$ is the workload allocated to location $k$ at time block $i$.
+- $l_{k,i}$ is the existing background load.
+- $\text{Cost}_{k,i}$ is the cost function (Carbon Intensity $c_{k,i} \times$ Energy Efficiency). One of the only mathematical assumptions the algorithm makes is that $\text{Cost}_{k,i}$ is **non-decreasing** with respect to load.
 
 ### Constraints
 
-1. **Workload Completion**: $\sum w_{i,j} \ge W + kP$
-    * $W$ is the total required work.
-    * $k$ is the number of "start" actions.
-    * $P$ is the **Startup Energy Tax** (penalty for pausing/resuming).
-2. **Physical Bottleneck**: $w_{i,j} + l_{i,j} \le r_{i,j}$ (Capacity limit).
-3. **Temporal Window**: All $w_{i,j}$ must fall between the earliest start and latest finish deadlines.
+1. **Workload Completion**: $\sum_{k,i} w_{k,i} \ge W + (\text{starts}) \times P$
+    - $W$ is the total required discrete work.
+    - $\text{starts}$ is the number of times a location transitions from idle to active.
+    - $P$ is the **Startup Penalty**. This deducts from the effective work to mathematically reflect the physical discontinuity overhead (e.g., loading weights into VRAM).
+2. **Physical Bottleneck**: $w_{k,i} \le h_{k,i}$ (Allocation cannot exceed available headroom).
+3. **Temporal Window**: All $w_{k,i}$ must fall between the earliest start and latest finish deadlines.
 
 ---
 
@@ -51,20 +49,56 @@ Where:
 
 To solve this efficiently across multiple data centers, the system employs a two-phase deterministic **Dynamic Programming (DP)** approach.
 
+### Variables & Definitions
+
+- **$n, m$**: Number of time blocks ($n$) and available data center locations ($m$).
+- **$W$**: Total requested workload, discretized into "effective work" units.
+- **$h_{k,i}$**: Maximum available headroom at location $k$, block $i$. We let $H_{max}$ be the maximum headroom across any block.
+- **$P$**: Startup penalty for non-contiguous execution, deducted from effective work to account for initialization overhead (e.g., loading weights).
+- **$\text{C}_{k,i}(w)$**: The marginal carbon cost to compute $w$ work at location $k$, block $i$, derived from $\text{Cost}_{k,i}(l_{k,i} + w) - \text{Cost}_{k,i}(l_{k,i})$.
+
 ### Phase 1: Per-Location Temporal Optimization
 
-For each data center, the algorithm calculates the optimal cost for *all possible* workload amounts $W' \in [0, W]$.
+For each data center $k \in [1, m]$, the algorithm computes the minimum cost for *all possible* effective workload amounts $w \in [0, W]$ over the $n$ blocks.
 
-* **State Representation**: $DP[i][w][s]$ represents the minimum cost to achieve $w$ work in the first $i$ blocks, given the current state $s$ (active or idle).
-* **Effective Work Transformation**: The algorithm uses a transformation where it minimizes cost over "effective work" $E = \sum w_i - kP$. This allows the penalty $P$ for non-contiguous execution to be handled natively within the state transitions.
-* **Optimization**: This phase is parallelized across locations and utilizes **AVX-512 SIMD** instructions to accelerate the DP table transitions.
+Let $DP[i][w][s]$ be the minimum cost to achieve exactly $w$ effective work in the first $i$ blocks at location $k$, ending in state $s \in \{0, 1\}$:
+
+- **$s = 0$ (Active)**: Work was allocated in block $i$ ($w_i > 0$).
+- **$s = 1$ (Idle)**: No work was allocated in block $i$ ($w_i = 0$).
+
+**Transitions:**
+For each block $i \in [1, n]$ and accumulated work $w \in [0, W]$, we evaluate the following allocation choices $w_i$ (where $h_i$ and $\text{C}_i$ are shorthands for $h_{k,i}$ and $\text{C}_{k,i}$):
+
+1. **Become or Remain Idle ($w_i = 0$)**:
+   $$ DP[i][w][1] = \min(DP[i-1][w][0], \ DP[i-1][w][1]) $$
+
+2. **Extend Active Run ($w_i > 0$, previously Active $s=0$)**:
+   For $w_i \in [1, \min(h_i, W - w)]$:
+   $$ DP[i][w + w_i][0] = \min \left( DP[i][w + w_i][0], \ DP[i-1][w][0] + \text{C}_i(w_i) \right) $$
+
+3. **Start New Run ($w_i > 0$, previously Idle $s=1$)**:
+   Incurs the startup penalty $P$. For $w_i \in [\max(1, P - w), \min(h_i, W + P - w)]$:
+   $$ DP[i][w + w_i - P][0] = \min \left( DP[i][w + w_i - P][0], \ DP[i-1][w][1] + \text{C}_i(w_i) \right) $$
+
+**Complexity**: Traversing $n$ blocks and $W$ states, while evaluating up to $H_{max}$ allocation choices per state, yields a time complexity of $\mathcal{O}(n \cdot W \cdot H_{max})$ per location. This nested traversal is heavily parallelized using **AVX-512 SIMD** intrinsics.
 
 ### Phase 2: Multi-Location Spatial Routing
 
-Once per-location costs are pre-computed, the results are merged using a **Multiple Choice Knapsack** algorithm.
+Once the optimal temporal schedules are pre-computed for all locations, the results are merged using a **Multiple Choice Knapsack** algorithm to find the global spatial optimum.
 
-* The algorithm selects exactly one "optimal path" from each data center's pre-computed table.
-* It finds the combination of per-location work amounts that sums to $W$ while minimizing the global sum of costs.
+Let $CostTable_k[x]$ be the minimal cost to process exactly $x$ work at location $k$, extracted as $\min(DP_k[n][x][0], DP_k[n][x][1])$.
+Let $M[k][w]$ be the minimum cost to achieve exactly $w$ work distributed across the first $k$ locations.
+
+**Transitions:**
+We merge locations sequentially. For each location $k \in [1, m]$ and required total work $w \in [0, W]$:
+$$ M[k][w] = \min_{0 \le x \le w} \left( M[k-1][w - x] + CostTable_k[x] \right) $$
+
+**Complexity**: Merging $m$ locations for up to $W$ workload requires testing combinations of $w - x$ and $x$, leading to $\mathcal{O}(m \cdot W^2)$.
+
+### Overall Algorithmic Complexity
+
+By combining Phase 1 and Phase 2, the exact upper-bound time complexity for the complete scheduler is:
+$$ \mathcal{O}\big(m \cdot W \cdot (n \cdot H_{max} + W)\big) $$
 
 ---
 
@@ -76,10 +110,10 @@ To make the system accessible to AI engineers, the scheduler translates "natural
 
 Instead of abstract workload units, users provide:
 
-* **GPU Model**: (e.g., Nvidia A100 SXM4, V100 PCIe).
-* **GPU Count**: Total number of parallel accelerators.
-* **Model Size (GB)**: The memory footprint of the weights.
-* **Runtime (Hours)**: The expected duration of the task.
+- **GPU Model**: (e.g., Nvidia A100 SXM4, V100 PCIe).
+- **GPU Count**: Total number of parallel accelerators.
+- **Model Size (GB)**: The memory footprint of the weights.
+- **Runtime (Hours)**: The expected duration of the task.
 
 The system performs a multi-stage translation to derive the internal parameters:
 
@@ -97,17 +131,7 @@ By calculating cost in absolute physical units, the "minimum cost" identified by
 
 ---
 
-## Technical Implementation
-
-The scheduler is implemented in **C++23** to leverage low-level hardware optimizations:
-
-* **AVX-512 Vectorization**: Massively parallelizes the inner DP loop for sub-millisecond table updates.
-* **Lock-Free Queues**: Manages incoming scheduling requests without thread contention.
-* **Asynchronous I/O**: Uses `std::async` and coroutines to fetch forecast data and persist results concurrently.
-
-```cpp
---8<-- "code/scheduler/src/SchedulerAlgo.hpp:131:179"
-```
+For details on the technical implementation of the DP engine, including **AVX-512 Vectorization** and asynchronous optimizations, please refer to the [Implementation](implementation.md#c-performance-simd-vectorization) page.
 
 ---
 
