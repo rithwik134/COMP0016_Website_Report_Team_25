@@ -8,16 +8,12 @@
 
 ### Abstract
 
-**Problem:** Datacenters consume a lot of electricity. A majority of this electricity comes from non-renewable sources. As AI demands increase, carbon outputted from datacenters becomes increasingly a concern. Optimising placement of workloads can limit carbon emissions greatly, essential for sustainable development of AI
+**Problem:** Today, large‑scale AI workloads are usually scheduled to maximise speed or minimise cost, with little regard for the carbon intensity of the electricity powering the data centres that run them. As demand for computation keeps rising, the emissions associated with that electricity use become increasingly significant. The challenge is no longer just deciding whether a job can run, but choosing when and where it should run so that it uses cleaner energy.
 
-**Solution:** Our carbon aware scheduler has reduced carbon emissions from workloads through two dimensions:
--Time (When we schedule a job) and, 
--Location (where we schedule a job). 
+**Solution:** Our approach is a carbon‑aware scheduler that makes decisions along two key dimensions: time and location. By combining carbon‑intensity forecasts with the ability to break workloads into smaller pieces, the system can place tasks into lower‑carbon windows and regions instead of treating all datacentres and time slots as interchangeable. Many AI workloads are naturally parallel, so splitting them into five‑minute chunks allows the scheduler to take advantage of predictable daily patterns—such as cleaner grids overnight—and geographic differences in energy sources. 
 
-Carbon intensity tends to be lower at night, while datacenters in different regions may source cleaner energy from their electrical grid. AI workloads are also highly parallel, resulting in it being able to be split up easily into 5-minute slots. 
-
-**Achievement & Impact:** Through our work, we have produced a fully functional prediction and scheduling algorithm that delegates work to minimise carbon emissions. It follows industry standard units and can be utilised by any individual or business. 
-
+**Achievement & Impact:** The result is a full end‑to‑end platform that predicts carbon intensity, generates valid schedules, and demonstrates measurable reductions in emissions compared to running workloads without optimisation. It also produces impact estimates that align with existing reporting standards. Beyond the technical results, the project offers a practical, reusable method for organisations and individuals who want to reduce the environmental footprint of their AI operations without redesigning their workloads or investing in new hardware.
+ 
 ---
 
 ### Project Demo Video
