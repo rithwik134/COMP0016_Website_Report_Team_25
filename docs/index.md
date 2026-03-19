@@ -16,7 +16,7 @@
 
 Carbon intensity tends to be lower at night, while datacenters in different regions may source cleaner energy from their electrical grid. AI workloads are also highly parallel, resulting in it being able to be split up easily into 5-minute slots. 
 
-**Achievement & Impact:** TODO
+**Achievement & Impact:** Through our work, we have produced a fully functional prediction and scheduling algorithm that delegates work to minimise carbon emissions. It follows industry standard units and can be utilised by any individual or business. 
 
 ---
 
