@@ -43,11 +43,17 @@ We conducted a series of semi-structured interviews on potential users of the pr
     **Question:** Do you think the industry is moving toward sustainability? <br>
     **Answer:** Slowly, yes. There’s growing awareness, but use is uneven. We need more tools that make sustainability easy and measurable, so it becomes a natural part of AI development rather than something optional.
 
-
-
-
 ### Personas
-To-DO
+Using the data collected, we created personas and scenarios for our target users.
+
+![Persona 1, Bob Lecun. AI Researcher and Developer](images/persona-bob.png)
+/// caption
+Persona 1, Bob Lecun. AI Researcher and Developer
+///
+![Persona 2, Tim Jackson. Junior Devops Technician of Autonomous Drones Company](images/persona-tim.png)
+/// caption
+Persona 2, Tim Jackson. Junior Devops Technician of Autonomous Drones Company
+///
 
 ### Use Cases
 TO-DO
