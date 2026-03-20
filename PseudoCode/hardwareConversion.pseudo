@@ -1,0 +1,36 @@
+HW_LIB ={
+    {"V100_PCIE": {.gpu_tdp = 250, .gpu_idle = 35, .bus_gbps = 12, .sys_base = 150, .tflops_fp32 = 15.7}},
+    {"A100_SXM4": {.gpu_tdp = 400, .gpu_idle = 55, .bus_gbps = 25, .sys_base = 230, .tflops_fp32 = 19.5}}
+}
+
+FUNCTION calculate_startup_energy(gpu_type, gpu_count)
+    // Phase 1: BIOS and Hardware POST
+    // Power is split between base hardware, fan surge, and idle GPUs
+    power_bios = (system_base * 0.8) + 
+                 (system_base * 0.2 * fan_surge_coefficient) + 
+                 (gpu_count * gpu_idle_power)
+    
+    // Convert power (W) to energy (kWh) over a 2-minute boot duration
+    energy_bios = (power_bios / 1000) * (2 / 60)
+
+    // Phase 2: OS and Driver Initialization
+    // Power accounts for system base, container overhead, and idle GPUs
+    power_os = system_base + container_load_overhead + (gpu_count * gpu_idle_power)
+    
+    // Convert power (W) to energy (kWh) over a 2-minute load duration
+    energy_os = (power_os / 1000) * (2 / 60)
+
+    RETURN energy_bios + energy_os
+END FUNCTION
+
+
+FUNCTION calculate_load_energy(model_size_gb, gpu_type, peak_power_kw)
+    // Calculate power draw during data transfer based on peak capacity
+    power_during_transfer = peak_power_kw * transfer_efficiency_coefficient
+    
+    // Calculate hours required to move model across the bus
+    transfer_duration_hours = (model_size_gb / hardware_bus_speed) / 3600
+    
+    // Energy (kWh) = Power (kW) * Time (h)
+    RETURN power_during_transfer * transfer_duration_hours
+END FUNCTION

@@ -28,8 +28,9 @@ The translation logic (`convertRawJobRequest`) calculates the following internal
     Where $E_{Transfer}$ is derived from the **Model Size** and the **Bus Bandwidth** (PCIe/SXM) of the selected GPU architecture.
 
 ```cpp
---8<-- "code/scheduler/src/utils/HardwareConversion.cpp:17:42"
+--8<-- "PseudoCode/hardwareConversion.pseudo"
 ```
+Further information on where we get the constants, and conversion rates can be found in [Research](research.md#11-hardware-specification-references) part of this report.
 
 ## The Cost Function (`LocationCost`)
 
