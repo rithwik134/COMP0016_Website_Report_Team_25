@@ -58,6 +58,23 @@ The UI (`SchedulingForm.tsx`) allows users to select from a predefined library o
 
 ---
 
+## Thread-Safe Request Serialization (`SchedulingQueue`)
+
+A critical constraint of the Dynamic Programming (DP) engine is that it requires a "frozen" snapshot of the system state—specifically current data center loads and carbon forecasts—to ensure mathematical correctness. If multiple scheduling requests were processed concurrently, the first to complete would update the global infrastructure capacity, potentially making the data used by the second calculation obsolete and resulting in over-provisioning or infeasible schedules.
+
+To resolve this while maintaining a responsive user interface, we implemented a **lock-free serialization queue**.
+
+### The Coroutine-Driven Worker
+The system utilizes **C++23 Coroutines** alongside a `boost::lockfree::queue` to manage incoming tasks. When a user submits a job via the UI, a task object is pushed to a non-blocking queue. A dedicated worker cycle, managed by atomic control flags, processes these tasks sequentially. 
+
+*   **State Integrity**: By serializing the execution, we guarantee that each DP run has exclusive access to the most recent infrastructure state.
+*   **Asynchronicity**: The use of asynchronous coroutines (via `drogon::Task<>`) allows the server to suspend execution during database I/O (such as persisting a reservation) without stalling the main worker thread, ensuring the system remains ready to ingest new requests.
+
+### Future Parallelism
+While requests are currently serialized to maintain strict integrity, the introduction of hardware power constraints opens the possibility of running non-conflicting schedules in parallel. This architectural evolution and its trade-offs are explored further in the [Possible Extensions](extensions.md) section.
+
+---
+
 ## C++ Performance & SIMD Vectorization
 
 The mathematical optimization performed by the dynamic programming solver involves vast state spaces and transitions that must be evaluated under strict latency budgets (often sub-millisecond per location) to enable real-time UI interactivity. To achieve this, the scheduler engine is implemented in **C++23** with a strong focus on data-oriented design and hardware-level performance.
@@ -69,17 +86,30 @@ To understand the necessity of this optimization, we can evaluate the exact uppe
 - **Workload ($W = 10,000$)**: The maximum internal discretization resolution required to accurately schedule very large multi-day LLM training jobs without significant rounding errors.
 - **Block Capacity ($H_{max} \approx 100$)**: The maximum number of effective work units a high-throughput GPU cluster can theoretically process in a single 5-minute window.
 
-Plugging these reasonable upper bounds into the complexity formula yields roughly $m \cdot n \cdot W \cdot H_{max} \approx 8.6 \times 10^9$ operations for the temporal phase, and $m \cdot W^2 = 5 \times 10^8$ operations for the spatial merge. A standard scalar execution processing over **9 billion** state transitions would easily stall the UI for multiple seconds, defeating the goal of a real-time, interactive dashboard.
+Plugging these reasonable upper bounds into the complexity formula yields roughly $m \cdot n \cdot W \cdot H_{max} \approx 8.6 \times 10^9$ operations for the temporal phase, and $m \cdot W^2 = 5 \times 10^8$ operations for the spatial merge. A standard scalar execution processing over **9 billion** state transitions would easily stall the UI for multiple seconds, defeating the goal of a real-time, interactive dashboard. Therefore, we decided on multiple optimizations.
 
-While modern C++ compilers (using `-O3` and `-march=native`) are highly adept at auto-vectorizing simple loops, the data dependencies and branching within these DP state transitions proved too complex for the compiler to optimally vectorize. 
+### Memory Layout: From AoS to SoA
+The initial implementation used an **Array of Structs (AoS)** approach to store the data necessary for path reconstruction. While intuitive, this was suboptimal for the CPU's cache hierarchy. We refactored these structures into a **Struct of Arrays (SoA)** format.
 
-To overcome this bottleneck, we manually applied **AVX-512 SIMD (Single Instruction, Multiple Data)** intrinsics. This allows the CPU to process 16 separate 32-bit floating-point DP states simultaneously within a single instruction cycle. By effectively dividing the 9 billion operations by 16, the total vector instruction count drops to approximately $5.6 \times 10^8$. On a standard 4 GHz server core, this raw compute mathematically completes in less than 0.2 seconds, ensuring the scheduler maintains sub-second latencies even on extensive time horizons. The code snippet below demonstrates how the inner transition loop evaluates multiple state branches in parallel, calculating the optimal minimum cost transitions far faster than a standard scalar approach.
+By grouping similar data types (like allocation units and state flags) into contiguous memory blocks, we improved cache hit rates in the L1 and L2 caches. While this cache-locality optimization only yielded approximately a 33% decrease in execution time in the best-case scenarios, it was a vital prerequisite for effective vectorization.
+
+### Hot-Path & Allocation Refinement
+To streamline the innermost loops, we focused on two micro-optimizations:
+1. **Precomputation**: We identified that cost function values were being recalculated across different branches. We implemented a precomputation step that stores these values in a local table, replacing expensive calculations with constant-time memory lookups.
+2. **Allocation Removal**: We eliminated dynamic memory allocations within the "hot-path." By reusing pre-allocated buffers and avoiding the system allocator during the main compute loop, we reduced the overhead per state transition.
+
+### SIMD Vectorization & Branchless Logic
+While modern compilers are adept at auto-vectorization, the data dependencies and branching within these DP state transitions proved too complex for the compiler to optimize. To overcome this, we manually applied **AVX-512 SIMD (Single Instruction, Multiple Data)** intrinsics. 
+
+By leveraging the non-decreasing nature of our cost function, we implemented branchless logic that allows the CPU to process multiple floating-point DP states simultaneously. While we currently use 64-bit doubles to maintain high precision—processing 8 states per instruction—the engine is architected to support 32-bit floats, which could theoretically double this throughput.
+
+The implementation of SIMD fundamentally changed the scaling behavior of the algorithm. While extremely large workloads still require significant compute time, this optimization ensures the dashboard remains fluid for typical usage. A rigorous empirical analysis of these improvements is provided in the [Evaluation](evaluation.md) section.
 
 ```cpp
 --8<-- "code/scheduler/src/SchedulerAlgo.hpp:131:179"
 ```
 
-Complementing the SIMD core, the architecture employs **lock-free queues** to manage incoming scheduling requests without thread contention, and utilizes C++23 coroutines alongside asynchronous I/O to fetch forecast data without blocking the computational threads. This ensures that the raw computational speed of the DP engine is never bottlenecked by API or database latency.
+Complementing the SIMD core, the architecture utilizes C++23 coroutines alongside asynchronous I/O to fetch forecast data without blocking the computational threads. This ensures that the raw computational speed of the DP engine is never bottlenecked by API or database latency.
 
 For a theoretical overview of the dynamic programming algorithm that these optimizations accelerate, see the [Algorithms](algorithms.md) page.
 
