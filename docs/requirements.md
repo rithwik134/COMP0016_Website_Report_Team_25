@@ -1,5 +1,5 @@
 # Requirements
-
+---
 ### Project Background
 
 AI workloads (e.g., training large models, inference services) are resource-intensive and often deployed without sustainability considerations. As AI demand is rapidly rising, it becomes increasingly important we prioritise reducing carbon emissions for sustainable development of AI technologies. NTTData, as a Green Software Foundation (GSF) Steering Member, has been working towards providing a trusted ecosystem of people, standard, and tools for delivering green software.
@@ -16,7 +16,35 @@ More specifically, the framework aims to:
 - Deliver an end‑to‑end system—covering prediction, scheduling, and results visualisation—that teams and organisations can adopt directly.
 
 ### Requirement Gathering
-TO-DO
+We conducted a series of semi-structured interviews on potential users of the program to find the specific needs of our users.
+
+=== "Autonomous Agent Developer"
+	**Question:** Would you say the disaster drone algorithms are built with sustainability in mind?<br>
+	**Answer:** No, usually the primary focus has always been on speed and reliability because these drones are used in life-saving situations like disaster response. Sustainability tends to take a back seat when performance is critical.
+
+	**Question:** What challenges do you face in achieving sustainable practices while working on disaster drones?<br>
+	**Answer:** Sustainability isn’t always a priority in fast-paced tech environments. Disaster scenarios need low-latency, high-GPU workloads, so balancing performance with environmental goals is tough. Plus, there aren’t many tools that make this easy.
+
+	**Question:** If you could design the perfect solution, what would it look like?<br>
+	**Answer:** I’d like a platform that helps me deploy workloads efficiently while showing real-time sustainability metrics-like carbon intensity and energy use. It would be ideal if I could see the impact and make informed choices without slowing down operations.
+
+	**Question:** How do you personally measure success when balancing performance and sustainability?<br>
+	**Answer:** For me, success means it operates like usual, like low latency for disaster response, while reducing energy consumption and carbon emissions as much as possible. Even small improvements matter. If I can deploy workloads that use fewer resources without compromising performance, that’s a win. I also look for transparency, having clear metrics on energy use and emissions helps me make informed decisions and track progress over time.
+=== "AI Researcher"
+    **Question:** What motivates you to focus on sustainability in AI? <br>
+    **Answer:** AI workloads are incredibly resource intensive, training large models can consume thousands of kilowatt hours. I believe we have a responsibility to make this process more efficient and environmentally conscious.
+
+    **Question:** What challenges do you face in achieving this? <br>
+    **Answer:** The biggest challenge is the lack of standardised tools and benchmarks for sustainability. Most platforms prioritise speed and cost, not environmental impact. It’s hard to convince teams to adopt sustainability practices when they don’t see immediate benefits.
+
+    **Question:** If you could design the perfect solution, what would it look like? <br>
+    **Answer:** I like the idea of an intelligent system that optimises workload placement across cloud and on-prem environments based on real time carbon intensity and resource efficiency. It should provide transparent metrics like the SCI scores you mentioned and allow me to make trade offs without sacrificing performance.
+
+    **Question:** Do you think the industry is moving toward sustainability? <br>
+    **Answer:** Slowly, yes. There’s growing awareness, but use is uneven. We need more tools that make sustainability easy and measurable, so it becomes a natural part of AI development rather than something optional.
+
+
+
 
 ### Personas
 To-DO
