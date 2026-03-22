@@ -1,6 +1,12 @@
 # COMP0016 Website Report - Team 25
 
-## How to Serve the Documentation
+## Project Context
+
+This is a website report on a software project.
+See [task_info.md](./task_info.md) for the requirements for the report, and
+see [code/](./code/) for the source code of the project being reported on.
+
+## Running (Serving the Website Locally)
 
 This uses `mkdocs`.
 

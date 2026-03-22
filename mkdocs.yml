@@ -1,28 +1,34 @@
 site_name: "COMP0016 Systems Engineering – Team 25"
 site_description: "Carbon-Aware AI Workload Scheduler – Final Report"
 site_url: "https://students.cs.ucl.ac.uk/2025/group25/"
+repo_url: "https://github.com/akioweh/carbon-aware-ai-agents"
+repo_name: "Carbon-Aware AI Agents"
 
 theme:
   name: material
   palette:
-    - scheme: default
-      primary: teal
-      accent: green
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
     - scheme: slate
       primary: teal
       accent: green
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
+    - scheme: default
+      primary: teal
+      accent: green
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
   font: false
   custom_dir: docs/overrides
   features:
+    - navigation.instant
+    - navigation.tabs
+    - navigation.tabs.sticky
     - navigation.sections
     - navigation.expand
     - navigation.top
+    - navigation.tracking
     - toc.integrate
     - content.tabs.link
 
@@ -30,7 +36,11 @@ markdown_extensions:
   - tables
   - admonition
   - pymdownx.details
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - attr_list
   - md_in_html
   - pymdownx.emoji:
@@ -38,9 +48,29 @@ markdown_extensions:
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - pymdownx.tabbed:
       alternate_style: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.snippets:
+      base_path: ["."]
+  - pymdownx.blocks.caption:
+      types:
+        - name: caption
+          prefix: "Figure {}."
+        - name: table
+          prefix: "Table {}."
+  - pymdownx.blocks.admonition
+
+plugins:
+  - search
+
+extra_javascript:
+  - javascripts/katex.js
+  - https://unpkg.com/katex@0.16.7/dist/katex.min.js
+  - https://unpkg.com/katex@0.16.7/dist/contrib/auto-render.min.js
 
 extra_css:
   - stylesheets/extra.css
+  - https://unpkg.com/katex@0.16.7/dist/katex.min.css
 
 nav:
   - Home: index.md
