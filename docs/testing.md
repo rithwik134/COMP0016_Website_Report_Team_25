@@ -204,7 +204,7 @@ These tests validate the RidgeFull carbon-intensity predictor — the statistica
 - **Feature engineering** — Fourier temporal features have the correct shape (48 × 22) and all values lie in [−1, 1].
 - **Prediction output** — The model produces exactly 2 016 data points (7 days × 24 hours × 60 min / 5 min), all clipped to the valid range [0, 500] gCO₂/kWh, at 5-minute intervals.
 - **Data requirements** — Insufficient historical data raises a `ValueError` rather than producing garbage predictions.
-- **Datacenter mapping** — All 5 active datacenters resolve to valid UK Carbon Intensity API region IDs with valid coordinates.
+- **Datacenter mapping** — Predictions for datacenters are correctly resolved to valid UK Carbon Intensity API region IDs with valid coordinates.
 
 #### Database Operations (`test_db_utils.py` — 40 tests)
 
