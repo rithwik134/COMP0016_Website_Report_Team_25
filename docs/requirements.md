@@ -61,44 +61,44 @@ TO-DO
 ### MoSCoW Requirements
 #### Functional Requirements
 
-| Priority | Requirement |
-| --- | --- |
-| Must Have | Ingest AI workload parameters and generate valid schedules. |
-| Must Have | Optimize scheduling across time and datacenter location to reduce emissions. |
-| Must Have | Use carbon-intensity signals in scheduling decisions. |
-| Must Have | Calculate and report emissions for optimized schedules. |
-| Must Have | Provide API and UI outputs for scheduling and results. |
-| Should Have | Compare optimized schedules against a baseline to show savings. |
-| Should Have | Split workloads into short execution blocks for finer optimization. |
-| Should Have | Include datacenter-level operating factors in optimization decisions. |
-| Should Have | Persist schedule history and enable previous-job review. |
-| Should Have | Support configurable scheduling constraints and optimization settings. |
-| Should Have | Handle incomplete upstream data with fallback behavior. |
-| Could Have | Richer visual reporting for trends and per-job impact. |
-| Could Have | Multi-objective readiness for carbon, timing, and operational trade-offs. |
-| Could Have | Support dynamic datacenter options configured in the UI. |
-| Could Have | Generate own forecast of carbon intensity using factors that influence carbon intensity (e.g. weather). |
-| Won’t Have | Full cross-cloud autonomous orchestration and billing integration. |
-| Won’t Have | Embodied carbon accounting of hardware lifecycle. |
+| ID | Requirement | Priority |
+| --- | --- | --- |
+| 1 | Ingest AI workload parameters and generate valid schedules. | Must Have |
+| 2 | Optimize scheduling across time and datacenter location to reduce emissions. | Must Have |
+| 3 | Use carbon-intensity signals in scheduling decisions. | Must Have |
+| 4 | Calculate and report emissions for optimized schedules. | Must Have |
+| 5 | Provide API and UI outputs for scheduling and results. | Must Have |
+| 6 | Compare optimized schedules against a baseline to show savings. | Should Have |
+| 7 | Split workloads into short execution blocks for finer optimization. | Should Have |
+| 8 | Include datacenter-level operating factors in optimization decisions. | Should Have |
+| 9 | Persist schedule history and enable previous-job review. | Should Have |
+| 10 | Support configurable scheduling constraints and optimization settings. | Should Have |
+| 11 | Handle incomplete upstream data with fallback behavior. | Should Have |
+| 12 | Richer visual reporting for trends and per-job impact. | Could Have |
+| 13 | Multi-objective readiness for carbon, timing, and operational trade-offs. | Could Have |
+| 14 | Support dynamic datacenter options configured in the UI. | Could Have |
+| 15 | Generate own forecast of carbon intensity using factors that influence carbon intensity (e.g. weather). | Could Have |
+| 16 | Full cross-cloud autonomous orchestration and billing integration. | Won’t Have |
+| 17 | Embodied carbon accounting of hardware lifecycle. | Won’t Have |
 
-#### Non-Functional Requirements (MoSCoW)
+#### Non-Functional Requirements 
 
-| Priority | Requirement |
-| --- | --- |
-| Must Have | Reliable execution of core scheduling and prediction flows. |
-| Must Have | Accurate and consistent impact calculations. |
-| Must Have | Clear and interpretable outputs for non-specialist users. |
-| Must Have | Standards-aligned impact reporting using SCI-oriented principles. |
-| Should Have | Modular, testable architecture across services and UI. |
-| Should Have | End-to-end traceability from workload input to impact output. |
-| Should Have | Interactive performance for schedule generation and result display. |
-| Should Have | Scalability for larger job volumes and longer planning horizons. |
-| Should Have | Observability through logs and diagnostics. |
-| Should Have | Reproducible outputs under fixed inputs and configuration. |
-| Should Have | Robust input validation and safe API handling. |
-| Should Have | Audit-friendly historical records for review and reporting. |
-| Could Have | Extended analytics views for stakeholder reporting. |
-| Could Have | Configurability for organization-specific policy tuning. |
-| Could Have | Readiness for broader enterprise integration paths. |
-| Won’t Have | Formal enterprise-grade HA/SLA guarantees. |
-| Won’t Have | Full IAM and compliance certification stack. |
+| ID | Requirement | Priority |
+| --- | --- | --- |
+| 1 | Reliable execution of core scheduling and prediction flows. | Must Have |
+| 2 | Accurate and consistent impact calculations. | Must Have |
+| 3 | Clear and interpretable outputs for non-specialist users. | Must Have |
+| 4 | Standards-aligned impact reporting using SCI-oriented principles. | Must Have |
+| 5 | Modular, testable architecture across services and UI. | Should Have |
+| 6 | End-to-end traceability from workload input to impact output. | Should Have |
+| 7 | Interactive performance for schedule generation and result display. | Should Have |
+| 8 | Scalability for larger job volumes and longer planning horizons. | Should Have |
+| 9 | Observability through logs and diagnostics. | Should Have |
+| 10 | Reproducible outputs under fixed inputs and configuration. | Should Have |
+| 11 | Robust input validation and safe API handling. | Should Have |
+| 12 | Audit-friendly historical records for review and reporting. | Should Have |
+| 13 | Extended analytics views for stakeholder reporting. | Could Have |
+| 14 | Configurability for organization-specific policy tuning. | Could Have |
+| 15 | Readiness for broader enterprise integration paths. | Could Have |
+| 16 | Formal enterprise-grade HA/SLA guarantees. | Won’t Have |
+| 17 | Full IAM and compliance certification stack. | Won’t Have |
