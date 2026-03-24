@@ -67,7 +67,14 @@ Based on the surveys, personas, and early design discussions, our team identifie
 Further conclusions are drawn in the MoSCoW requirements at the bottom of the page.
 
 ### Use Cases
-TO-DO
+The use case diagram below illustrates how different users interact with the carbon‑aware scheduling system. It highlights the core actions available to users, including submitting AI workloads, adjusting datacentre availability, and reviewing both optimised and baseline schedules. These interactions reflect the system’s goal of making carbon‑aware decision‑making accessible and intuitive. By combining workload submission, carbon‑intensity forecasting, and visual comparison tools, the platform supports a smooth end‑to‑end experience that helps users understand and reduce the environmental impact of their AI operations.
+
+![Use Case Diagram for carbon-aware Scheduler](images/use-case-diagram.png)
+/// caption
+Use-Case Diagram for the program
+///
+
+
 
 ### MoSCoW Requirements
 #### Functional Requirements
