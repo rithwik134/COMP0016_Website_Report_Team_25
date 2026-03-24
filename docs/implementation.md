@@ -154,11 +154,199 @@ Creating this foundational infrastructure was technically demanding, but it fund
 
 ## Forecasting Service (Stats Component)
 
-The forecasting service is implemented as a **FastAPI** application in Python, leveraging the **Direct-XGBoost** model. It performs the following steps:
+The Stats service is a **FastAPI** application in Python that continuously ingests carbon intensity data, trains a Ridge regression model per data center, and serves 7-day carbon intensity forecasts at 5-minute resolution to the C++ Scheduler via a REST API. For details on model selection and experimental comparison against alternative approaches, see the [Research](research.md) page.
 
-1. **Data Ingestion**: Periodically fetches real-time regional carbon data and weather forecasts.
-2. **Feature Engineering**: Generates cyclical time features and integrates 11 raw weather features from the Open-Meteo API.
-3. **Inference**: Produces a 336-step forecast (7 days) for each of the 5 UK regions.
-4. **API Delivery**: Exposes the forecasts via a REST API, which the C++ Scheduler consumes concurrently using asynchronous coroutines.
+<!-- TODO: update the Research link above to point to the specific model-research anchor once that section is written -->
 
-For details on the forecasting experiments and accuracy, see the [Algorithms](algorithms.md) page.
+### Service Architecture
+
+The service is structured around three background threads that operate on two SQLite databases, with an in-memory model cache sitting between the data layer and the API layer.
+
+```mermaid
+flowchart TB
+    subgraph External["External APIs"]
+        CI["UK Carbon Intensity API<br/><i>30-min regional readings</i>"]
+        OM["Open-Meteo API<br/><i>Historical archive + 8-day forecast</i>"]
+    end
+
+    subgraph Threads["Background Threads (every 30 min)"]
+        CC["Carbon Collector<br/><code>carbon_collector_loop</code>"]
+        CS["Carbon Sync<br/><code>carbon_sync_loop</code>"]
+        PL["Prediction Loop<br/><code>prediction_loop</code>"]
+    end
+
+    subgraph Storage["SQLite Databases"]
+        CDB[("carbon_intensity.db<br/><i>Raw readings + generation mix</i>")]
+        CACHE[("cache.db<br/><i>Predictions, historical data,<br/>datacenter registry</i>")]
+    end
+
+    MC["In-Memory Model Cache<br/><i>Trained Ridge model + scaler<br/>per datacenter</i>"]
+    RE["ridge_enhanced.py<br/><i>Feature engineering + RidgeCV</i>"]
+
+    subgraph API["REST API (FastAPI)"]
+        EP1["GET /locations/{id}/metrics/<br/>forecast_carbon_intensity"]
+        EP2["GET /locations/{id}/metrics/<br/>forecast_load"]
+        EP3["GET /locations"]
+    end
+
+    SCHED["C++ Scheduler<br/><i>(consumer)</i>"]
+
+    CI -->|"fetch every 30 min"| CC
+    CC -->|"store readings"| CDB
+    CDB -->|"bulk sync"| CS
+    CS -->|"upsert into historical_data"| CACHE
+    CACHE -->|"read training data"| PL
+    PL -->|"invoke per DC"| RE
+    OM -->|"fetch every 30 min<br/>(archive + forecast)"| RE
+    RE -->|"train / cache hit"| MC
+    MC -->|"predict"| RE
+    RE -->|"save forecast JSON"| CACHE
+    CACHE -->|"serve cached forecasts"| API
+    API -->|"HTTP"| SCHED
+```
+
+### External Data Sources & Sampling Interval
+
+The service consumes two external APIs:
+
+| API | Data Provided | Granularity | Role |
+|:----|:-------------|:------------|:-----|
+| **UK Carbon Intensity API** | Regional carbon intensity (gCO₂/kWh) for 14 UK regions | **30-minute slots** | Training labels — the values the model learns to predict |
+| **Open-Meteo Archive API** | Historical hourly weather (temperature, wind, solar, pressure, etc.) | Hourly (resampled to 30 min) | Training features — weather conditions that correlate with carbon intensity |
+| **Open-Meteo Forecast API** | 8-day weather forecast | Hourly (resampled to 30 min) | Inference features — future weather used when generating predictions |
+
+All internal data is stored and processed at **30-minute intervals** because this is the finest granularity the UK Carbon Intensity API provides. The final 7-day forecast is interpolated to 5-minute resolution (2,016 data points) before being served to the Scheduler, which operates on a 5-minute time grid.
+
+### Data Pipeline & Storage
+
+The service uses **two SQLite databases** with distinct responsibilities:
+
+**`carbon_intensity.db`** — the collector-managed raw store:
+
+- Populated by the Carbon Collector thread, which calls the UK Carbon Intensity API every 30 minutes
+- On first startup, performs a **365-day backfill** to provide sufficient training history
+- Stores raw readings (`carbon_readings`), region metadata (`regions`), and fuel-type generation mix (`generation_mix`)
+
+**`cache.db`** — the serving database:
+
+- `historical_data` — 30-minute carbon intensity readings, bulk-synced from `carbon_intensity.db` by the Carbon Sync thread
+- `predictions` — JSON-serialized forecasts with TTL-based expiry (40 minutes), written by the Prediction Loop and read by API handlers
+- `historical_cache` — pre-upsampled 5-minute data for the trailing 7 days, so API responses can stitch historical observations with forecast data without recomputing on every request
+- `datacenters` — registry of all 14 UK data centers with active/inactive state, coordinates, and region mapping
+
+The separation exists so the collector can write freely without contending with API read traffic, and so the serving layer has a self-contained database it can query without touching the collector's write path.
+
+### Background Threads & Retraining Cadence
+
+Three daemon threads run continuously after startup:
+
+| Thread | Interval | Purpose |
+|:-------|:---------|:--------|
+| **Carbon Collector** | 30 min | Fetches the latest carbon readings from the UK Carbon Intensity API and inserts them into `carbon_intensity.db` |
+| **Carbon Sync** | 30 min | Bulk-upserts new readings from `carbon_intensity.db` into the `historical_data` table in `cache.db` |
+| **Prediction Loop** | 30 min | For each registered datacenter: retrains (or cache-hits) the Ridge model, generates a 7-day forecast, and writes it to the `predictions` table |
+
+The 30-minute cycle aligns with the API's publication schedule — new carbon data arrives every 30 minutes, so retraining more frequently would produce identical models. The prediction cache TTL is set to 40 minutes, ensuring that a fresh forecast is always available before the previous one expires.
+
+### Model Caching & Thread Safety
+
+Training the Ridge model involves constructing a feature matrix from the entire historical series (~17,500 rows for a year of 30-minute data, expanded to ~2 million training samples via the direct multi-step strategy described below). To avoid rebuilding this matrix every 30 minutes when the data has not changed, the service maintains a **thread-safe in-memory model cache**.
+
+Each datacenter's trained model is stored in a Python dictionary keyed by datacenter name. The cache entry includes a **fingerprint** — a tuple of `(row_count, last_timestamp)` — that uniquely identifies the training data. On each prediction cycle:
+
+1. The prediction loop computes the current fingerprint from the database
+2. If it matches the cached fingerprint, the existing model is reused and only the test feature matrix (for the forecast horizon) is built — skipping training entirely
+3. If the fingerprint differs (new data arrived), the full training pipeline runs under a **threading lock** with a double-check pattern: after acquiring the lock, the fingerprint is re-checked because another thread may have already retrained
+
+This means the expensive training step only executes when genuinely new carbon data has been ingested — typically once every 30 minutes — while subsequent API requests within that window get instant cache hits.
+
+### The Ridge Regression Predictor (`ridge_enhanced.py`)
+
+#### Direct Multi-Step Forecasting
+
+The predictor uses a **direct forecasting** strategy: rather than predicting one step ahead and iterating (which accumulates errors), it trains a single model that can predict the carbon intensity at *any* future time step given the current state. The forecast horizon is encoded as an input feature, so the model learns how prediction difficulty varies with distance from the origin.
+
+Concretely, during training, the model sees examples of the form:
+
+> *"Given that the historical series looks like **X** at origin time $t_0$, and we want to predict $h$ steps into the future, the carbon intensity at $t_0 + h$ is $y$."*
+
+This is achieved by sliding over all valid origin points in the training history and, for each origin, generating training samples for every horizon $h \in [1, 336]$ (336 half-hours = 7 days). To keep the training matrix manageable, origins are subsampled by a factor of 3.
+
+#### Feature Engineering (65 Features)
+
+Each training sample is described by **65 engineered features** drawn from five groups:
+
+**1. Temporal Features (22 features)** — Fourier-encoded cyclical time signals that capture periodic patterns in carbon intensity:
+
+- 12 features for **hour-of-day**: $\sin$ and $\cos$ at harmonics $k = 1, \ldots, 6$ of $\frac{2\pi \cdot \text{hour}}{24}$. Higher harmonics capture sharper intra-day patterns (e.g., the evening peak) that a single sine wave would smooth over.
+- 4 features for **day-of-week**: $\sin$ and $\cos$ at harmonics $k = 1, 2$ of $\frac{2\pi \cdot \text{dow}}{7}$. Captures the weekday/weekend demand cycle.
+- 4 features for **day-of-year**: $\sin$ and $\cos$ at harmonics $k = 1, 2$ of $\frac{2\pi \cdot \text{doy}}{365.25}$. Captures seasonal variation (e.g., higher gas generation in winter).
+- 1 **weekend flag**: binary indicator for Saturday/Sunday.
+- 1 **night flag**: binary indicator for hours outside 06:00–22:00.
+
+**2. Horizon Encoding (4 features)** — Tells the model how far into the future it is predicting:
+
+- $h_{\text{norm}} = h / 336$ (linear)
+- $h_{\text{norm}}^2$ (quadratic)
+- $h_{\text{norm}}^3$ (cubic)
+- $\log(1 + h) / \log(337)$ (logarithmic)
+
+The polynomial and logarithmic encodings allow the model to learn non-linear degradation of prediction confidence with increasing horizon.
+
+**3. Origin Summary Statistics (13 features)** — A statistical snapshot of the carbon intensity series at the origin point, computed via rolling windows:
+
+| Feature | Window | Description |
+|:--------|:-------|:------------|
+| `last_value` | — | The most recent carbon intensity reading |
+| `mean_24h`, `std_24h`, `median_24h`, `min_24h`, `max_24h` | 48 steps (24h) | Distribution of the last 24 hours |
+| `mean_7d`, `std_7d` | 336 steps (7d) | Longer-term average and variability |
+| `last_diff` | — | First difference (rate of change) |
+| `trend` | 24 vs 48 steps | Slope between short and long moving averages |
+| `lag_24h`, `lag_7d` | — | Values exactly 24h and 7d ago (same time yesterday / last week) |
+| `same_hour_mean` | All history | Running mean of all past values at the same half-hour slot |
+
+These features give the model a rich characterisation of "where the series is right now" — its level, volatility, trend, and historical norms for the current time of day.
+
+**4. Weather Features (16 features)** — Retrieved from Open-Meteo and aligned to the target timestamp:
+
+- 9 raw measurements: temperature, relative humidity, dewpoint, pressure, cloud cover, wind speed, wind gusts, solar radiation, precipitation
+- Wind direction encoded as $\sin$ and $\cos$ components (avoids the 359°→0° discontinuity)
+- 5 engineered derivatives:
+    - **Wind power** ($\text{speed}^3 / 1000$) — proxy for wind generation potential (power scales cubically with speed)
+    - **Wind ramp** (first difference of speed) — captures sudden changes in wind generation
+    - **Pressure change** (first difference) — indicates incoming weather fronts
+    - **Solar clearness** (radiation / 1000) — normalised solar availability
+    - **Temperature deviation** (current temp minus 7-day rolling mean) — captures unusual temperature events
+
+Weather data is fetched from the Open-Meteo Archive API for training and the Open-Meteo Forecast API for inference, then resampled from hourly to 30-minute resolution via linear interpolation. Historical weather is cached to disk (as pickled DataFrames) to avoid redundant API calls.
+
+**5. Interaction Terms (10 features)** — Cross-products between feature groups that capture conditional relationships:
+
+- `last_value × horizon` — how the current level modulates forecast uncertainty at distance
+- `weekend × hour_sin`, `weekend × hour_cos` — weekend-specific daily patterns
+- `hour_sin × wind_speed`, `hour_cos × wind_speed` — time-dependent wind effects
+- `hour_sin × solar`, `hour_cos × solar` — time-dependent solar effects
+- `wind_speed × solar` — combined renewable generation signal
+- `temperature × hour_sin` — temperature-dependent demand patterns
+- `last_value × wind_speed` — current carbon level modulated by wind availability
+
+#### Training & Inference
+
+**Training** is deterministic and fast (under 1 second). The 65-feature matrix is standardised using `StandardScaler` (zero mean, unit variance), then passed to `RidgeCV` — a Ridge regression with built-in leave-one-out cross-validation over 8 regularisation strengths $\alpha \in \{0.01, 0.1, 0.5, 1, 5, 10, 50, 100\}$. `RidgeCV` automatically selects the $\alpha$ that minimises the cross-validated error, balancing model complexity against overfitting.
+
+**Inference** applies the same scaler transform to the test features (built from the forecast timestamps and current weather forecast), then clips predictions to the physical range $[0, 500]$ gCO₂/kWh. The raw 336-step forecast at 30-minute resolution is then resampled to 5-minute resolution via linear interpolation, yielding 2,016 data points covering the next 7 days.
+
+### REST API
+
+The Stats service exposes the following endpoints, consumed by the C++ Scheduler and the Next.js UI:
+
+| Method | Endpoint | Description |
+|:-------|:---------|:------------|
+| `GET` | `/locations` | Lists active data centers (visible to the Scheduler) |
+| `GET` | `/datacenters` | Lists all data centers with coordinates and active state |
+| `PATCH` | `/datacenters/{id}` | Toggles a data center's active state |
+| `GET` | `/locations/{id}/metrics/forecast_carbon_intensity` | 7-day carbon intensity forecast (historical + predicted, 5-min resolution) |
+| `GET` | `/locations/{id}/metrics/forecast_load` | 7-day load forecast (synthetic, 5-min resolution) |
+| `GET` | `/predictionWindow` | Returns the forecast window length (168 hours) |
+
+Forecast endpoints accept optional `start_time` and `end_time` query parameters (ISO 8601). Responses stitch together historical observations (`is_forecast: false`) with predicted values (`is_forecast: true`), giving the Scheduler and UI a seamless time series across the boundary.
