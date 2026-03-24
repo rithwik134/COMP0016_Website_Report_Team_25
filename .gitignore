@@ -2,8 +2,5 @@ package-lock.json
 node_modules/
 .next/
 site/
-<<<<<<< Updated upstream
 *.lock
-=======
 .vscode/
->>>>>>> Stashed changes
