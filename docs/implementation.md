@@ -61,18 +61,36 @@ The UI (`SchedulingForm.tsx`) allows users to select from a predefined library o
 
 ## Thread-Safe Request Serialization (`SchedulingQueue`)
 
-A critical constraint of the Dynamic Programming (DP) engine is that it requires a "frozen" snapshot of the system state—specifically current data center loads and carbon forecasts—to ensure mathematical correctness. If multiple scheduling requests were processed concurrently, the first to complete would update the global infrastructure capacity, potentially making the data used by the second calculation obsolete and resulting in over-provisioning or infeasible schedules.
+A critical constraint of the Dynamic Programming (DP) engine is that it requires a strictly "frozen" snapshot of the system state—specifically current data center loads, capacity, and carbon forecasts—to ensure mathematical correctness. If multiple scheduling requests were processed concurrently, the first to complete would update the global infrastructure capacity, instantly invalidating the state used by the second calculation and resulting in over-provisioning or infeasible schedules.
 
-To resolve this while maintaining a responsive user interface, we implemented a **lock-free serialization queue**.
+To resolve this while maintaining a responsive, non-blocking user interface, we designed a **lock-free coroutine serialization queue**. Instead of relying on expensive, thread-blocking mutexes that could stall the server's HTTP event loop, requests are serialized entirely through atomic state machines and C++20/23 custom awaitables.
 
-### The Coroutine-Driven Worker
-The system utilizes **C++23 Coroutines** alongside a `boost::lockfree::queue` to manage incoming tasks. When a user submits a job via the UI, a task object is pushed to a non-blocking queue. A dedicated worker cycle, managed by atomic control flags, processes these tasks sequentially. 
+### The Custom Awaitable (`SchedulerTask`)
+When a user submits a job via the UI, the HTTP handler encapsulates the request in a `SchedulerTask`—a custom awaitable object. Managing the lifecycle of this object across concurrent threads is notoriously difficult due to the "suspension race condition": the background worker might finish calculating the schedule *before* the HTTP handler has fully suspended, which would cause the continuation handle to be lost and deadlock the request.
 
-*   **State Integrity**: By serializing the execution, we guarantee that each DP run has exclusive access to the most recent infrastructure state.
-*   **Asynchronicity**: The use of asynchronous coroutines (via `drogon::Task<>`) allows the server to suspend execution during database I/O (such as persisting a reservation) without stalling the main worker thread, ensuring the system remains ready to ingest new requests.
+To prevent this, `SchedulerTask` utilizes an internal lock-free state machine (`Pending`, `Suspended`, `Done`) orchestrated via `std::atomic<State>`. 
+*   **Race-Free Suspension:** In `await_suspend`, the controller thread stores its continuation handle (`std::memory_order_release`) and attempts an atomic `compare_exchange_strong` to transition to `Suspended`. If the worker thread has already transitioned the state to `Done` (because the schedule computed instantly), the suspension is safely aborted and the result is returned immediately.
+*   **Safe Resumption:** Conversely, when the worker finishes, it calls `resume()`. It attempts to transition the state to `Done` using `std::memory_order_acq_rel`. If the controller thread hasn't finished suspending yet, the worker simply exits, leaving the controller thread to fetch the result instantly rather than waiting to be woken up.
+*   **Exception Propagation:** If the DP engine throws an error, the `std::exception_ptr` is captured lock-free and safely rethrown in `await_resume()`, ensuring standard C++ `try/catch` blocks in the HTTP handler work flawlessly across thread boundaries.
+
+### Lock-Free Orchestration and Lost-Wakeup Prevention
+To guarantee strict serialization of the DP algorithms without blocking, the system utilizes a `boost::lockfree::queue<SchedulerTask*>` mapped to a dedicated worker coroutine (`runTasks()`). 
+
+When `push_back` is called, the task is pushed onto the zero-contention queue, and an `std::atomic<bool> running` flag is evaluated. If the worker isn't running, it is dynamically spun up via `drogon::async_run`. 
+
+A critical concurrency edge-case occurs when the queue drains: if the worker thread reads an empty queue and sets `running = false` at the exact nanosecond a new request arrives, that new request might never be processed (a "lost wakeup"). To mitigate this, the queue implements a classic double-checked lock-free pattern using an atomic `queueSize` counter (`std::memory_order_release` / `std::memory_order_acquire`). After the worker shuts down, it verifies the counter; if a task slipped in, it atomically re-acquires the `running` lock and executes a `goto start;` jump, completely eliminating the race condition.
+
+The elegance of this lock-free architecture is best demonstrated by the dual state machines handling both the controller task's suspension and the worker's lost-wakeup prevention loop:
+
+```cpp
+--8<-- "PseudoCode/schedulingQueue.pseudo"
+```
+
+### Asynchronous I/O Efficiency
+Because the worker loop (`runTasks`) executes as a `drogon::Task<>` coroutine, it inherently supports asynchronous suspension. When the DP engine finishes and the system needs to persist the reservation to the database, the worker thread `co_await`s the I/O. The thread is immediately released back to the Drogon thread pool, ensuring that even under heavy serialization, the server's CPU threads are never held hostage by database latency.
 
 ### Future Parallelism
-While requests are currently serialized to maintain strict integrity, the introduction of hardware power constraints opens the possibility of running non-conflicting schedules in parallel. This architectural evolution and its trade-offs are explored further in the [Possible Extensions](extensions.md) section.
+While requests are currently serialized strictly to maintain global state integrity, the introduction of hardware power constraints opens the possibility of running non-conflicting schedules in parallel. This architectural evolution and its trade-offs are explored further in the [Possible Extensions](extensions.md) section.
 
 ---
 
@@ -109,10 +127,28 @@ The implementation of SIMD fundamentally changed the scaling behavior of the alg
 ```cpp
 --8<-- "code/scheduler/src/SchedulerAlgo.hpp:131:179"
 ```
+Complementing the SIMD core, the architecture utilizes C++23 coroutines alongside asynchronous I/O to fetch forecast data without blocking the computational threads.
 
-Complementing the SIMD core, the architecture utilizes C++23 coroutines alongside asynchronous I/O to fetch forecast data without blocking the computational threads. This ensures that the raw computational speed of the DP engine is never bottlenecked by API or database latency.
+## Custom Coroutine Concurrency: The Lock-Free `when_all`
 
-For a theoretical overview of the dynamic programming algorithm that these optimizations accelerate, see the [Algorithms](algorithms.md) page.
+While the SIMD engine processes DP states in microseconds, that speed is entirely bottlenecked if the scheduler stalls waiting for network I/O (e.g., sequentially fetching weather and carbon forecasts for 5 different UK regions from the Python backend). To prevent this HTTP latency from stacking linearly, we needed to fire off multiple requests concurrently and await them all simultaneously. Because neither the C++23 standard library nor the Drogon framework provide a production-ready `when_all` coroutine combinator, engineering a custom, thread-safe implementation became an absolute necessity.
+
+Building a custom `when_all` awaitable in C++ requires navigating extremely low-level compiler mechanics. The primary difficulty lies in the "suspension race condition": if the spawned network requests execute synchronously or resolve faster than the parent coroutine can suspend, the parent’s continuation handle gets lost or overwritten, resulting in a permanent deadlock. 
+
+To solve this, our `scheduler::coro::when_all` implementation relies on a highly complex, lock-free state machine orchestrated through a shared `ResultContext`. Instead of relying on expensive mutexes, thread synchronization is handled entirely via `std::atomic` operations with strict memory orderings:
+
+*   **The Shared Context & Scope Guards:** When `when_all` is invoked, it allocates a shared `ResultContext` containing an atomic `remaining` counter initialized to the number of tasks. Each child task is wrapped in a generic lambda (`detail::wrap_task`) that uses a custom `ScopeGuard`. When a child coroutine finishes (or fails), the `ScopeGuard` destructor guarantees that `complete_one()` is called, which executes an atomic `fetch_sub(1, std::memory_order_acq_rel)`. The thread that drops this counter to `0` becomes responsible for waking up the parent.
+*   **Race-Free Suspension:** In the parent's `Awaiter::await_suspend`, the parent attempts to register its coroutine handle using an atomic `compare_exchange_strong` against an expected `NO_CONTINUATION` state. Meanwhile, if the children finish early, the final child thread will aggressively swap the context's handle to a `WAITING_CONTINUATION` sentinel pointer. If the parent's `compare_exchange` fails because the sentinel is already there, `await_suspend` returns `false`, safely aborting the parent's suspension entirely and allowing it to instantly fetch the results.
+*   **Lock-Free Exception Capturing:** Handling asynchronous failures across multiple threads without crashing the server required a dedicated three-state atomic machine (`NO_EXCEPTION`, `EXCEPTION_IN_PROGRESS`, `EXCEPTION_CAPTURED`). If one of the 5 regional forecast requests throws an error, the catch block attempts to transition the state to `IN_PROGRESS`. Because of the `compare_exchange` loop, only the *first* failing thread wins this race. The winner safely moves the `std::exception_ptr` into the shared context and transitions to `CAPTURED`. The parent then checks this state in `await_resume()` and rethrows the exception, aborting the remaining operations gracefully.
+*   **Variadic Metaprogramming:** To make the utility universally applicable across the codebase, the template metaprogramming heavily leverages C++20 concepts (`std::invocable`) and fold expressions. It dynamically resolves return types to support both homogeneous `std::vector<drogon::Task<T>>` arrays and heterogeneous variadic arguments `drogon::Task<Rets>...`, mapping results perfectly into a `std::tuple` or throwing them into `std::expected` monads depending on the `return_exceptions` template flag.
+
+To illustrate how we resolve the suspension race condition without mutexes, here is the simplified lock-free logic of our custom awaiter:
+
+```cpp
+--8<-- "PseudoCode/when_all.pseudo"
+```
+
+Creating this foundational infrastructure was technically demanding, but it fundamentally bridges the gap between our I/O needs and our compute engine. It guarantees that the worker thread safely parallelizes network requests, avoids deadlocks, and ensures the ultra-fast SIMD scheduler is fed with external API data as rapidly as the physical network allows.
 
 ---
 

@@ -1,0 +1,52 @@
+enum State { Pending, Suspended, Done };
+
+class SchedulerTask {
+    Atomic<State> state = Pending;
+    Handle coroutine_handle;
+
+    // Executed by the controller thread handling the HTTP request
+    bool await_suspend(Handle h) {
+        coroutine_handle = h;
+        State expected = Pending;
+        
+        // If the background worker already finished, state is 'Done'. CAS fails.
+        // controller thread aborts suspension and returns the HTTP response immediately.
+        return state.compare_exchange(expected, Suspended);
+    }
+
+    // Executed by the background serialization worker
+    void complete_and_resume() {
+        State expected = Pending;
+        
+        // If controller thread hasn't finished suspending, transition to 'Done' and exit.
+        // The controller thread will see 'Done' in await_suspend and never go to sleep.
+        if (state.compare_exchange(expected, Done)) return;
+        
+        // Otherwise, controller thread is safely 'Suspended'. Wake it up.
+        coroutine_handle.resume();
+    }
+};
+
+// The background serialization worker coroutine
+void runTasks() {
+start:
+    while (Task task = lock_free_queue.pop()) {
+        queue_size.fetch_sub(1);
+        compute_dp_algorithm(task);
+        task.complete_and_resume();
+    }
+    
+    // Queue drained. Mark worker as idle.
+    is_running.store(false);
+    
+    // LOST-WAKEUP PREVENTION:
+    // If a new HTTP request arrived exactly after we set is_running to false,
+    // it might never be processed. We double-check the queue_size.
+    if (queue_size.load() > 0) {
+        bool expected = false;
+        // If we successfully flip is_running back to true, jump back to processing.
+        if (is_running.compare_exchange(expected, true)) {
+            goto start;
+        }
+    }
+}
