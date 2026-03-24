@@ -160,50 +160,7 @@ The Stats service is a **FastAPI** application in Python that continuously inges
 
 ### Service Architecture
 
-The service is structured around three background threads that operate on two SQLite databases, with an in-memory model cache sitting between the data layer and the API layer.
-
-```mermaid
-flowchart TB
-    subgraph External["External APIs"]
-        CI["UK Carbon Intensity API<br/><i>30-min regional readings</i>"]
-        OM["Open-Meteo API<br/><i>Historical archive + 8-day forecast</i>"]
-    end
-
-    subgraph Threads["Background Threads (every 30 min)"]
-        CC["Carbon Collector<br/><code>carbon_collector_loop</code>"]
-        CS["Carbon Sync<br/><code>carbon_sync_loop</code>"]
-        PL["Prediction Loop<br/><code>prediction_loop</code>"]
-    end
-
-    subgraph Storage["SQLite Databases"]
-        CDB[("carbon_intensity.db<br/><i>Raw readings + generation mix</i>")]
-        CACHE[("cache.db<br/><i>Predictions, historical data,<br/>datacenter registry</i>")]
-    end
-
-    MC["In-Memory Model Cache<br/><i>Trained Ridge model + scaler<br/>per datacenter</i>"]
-    RE["ridge_enhanced.py<br/><i>Feature engineering + RidgeCV</i>"]
-
-    subgraph API["REST API (FastAPI)"]
-        EP1["GET /locations/{id}/metrics/<br/>forecast_carbon_intensity"]
-        EP2["GET /locations/{id}/metrics/<br/>forecast_load"]
-        EP3["GET /locations"]
-    end
-
-    SCHED["C++ Scheduler<br/><i>(consumer)</i>"]
-
-    CI -->|"fetch every 30 min"| CC
-    CC -->|"store readings"| CDB
-    CDB -->|"bulk sync"| CS
-    CS -->|"upsert into historical_data"| CACHE
-    CACHE -->|"read training data"| PL
-    PL -->|"invoke per DC"| RE
-    OM -->|"fetch every 30 min<br/>(archive + forecast)"| RE
-    RE -->|"train / cache hit"| MC
-    MC -->|"predict"| RE
-    RE -->|"save forecast JSON"| CACHE
-    CACHE -->|"serve cached forecasts"| API
-    API -->|"HTTP"| SCHED
-```
+The service is structured around three background threads that operate on two SQLite databases, with an in-memory model cache sitting between the data layer and the API layer. A detailed architectural diagram of this pipeline is provided in [System Design — Stats Component](system-design.md#stats-component-internal-architecture).
 
 ### External Data Sources & Sampling Interval
 
@@ -248,17 +205,33 @@ Three daemon threads run continuously after startup:
 
 The 30-minute cycle aligns with the API's publication schedule — new carbon data arrives every 30 minutes, so retraining more frequently would produce identical models. The prediction cache TTL is set to 40 minutes, ensuring that a fresh forecast is always available before the previous one expires.
 
-### Model Caching & Thread Safety
+### Incremental Training via Sufficient Statistics
 
-Training the Ridge model involves constructing a feature matrix from the entire historical series (~17,500 rows for a year of 30-minute data, expanded to ~2 million training samples via the direct multi-step strategy described below). To avoid rebuilding this matrix every 30 minutes when the data has not changed, the service maintains a **thread-safe in-memory model cache**.
+Training the Ridge model from scratch involves constructing a feature matrix from the entire historical series (~17,500 rows for a year of 30-minute data, expanded to ~2 million training samples via the direct multi-step strategy described below). Rebuilding this matrix every 30 minutes would spike RAM usage to ~1 GB per datacenter — an unnecessary cost given that only one or two new readings arrive each cycle.
 
-Each datacenter's trained model is stored in a Python dictionary keyed by datacenter name. The cache entry includes a **fingerprint** — a tuple of `(row_count, last_timestamp)` — that uniquely identifies the training data. On each prediction cycle:
+To avoid this, the service uses **incremental Ridge updates** based on cached sufficient statistics. Ridge regression has a closed-form solution:
 
-1. The prediction loop computes the current fingerprint from the database
-2. If it matches the cached fingerprint, the existing model is reused and only the test feature matrix (for the forecast horizon) is built — skipping training entirely
-3. If the fingerprint differs (new data arrived), the full training pipeline runs under a **threading lock** with a double-check pattern: after acquiring the lock, the fingerprint is re-checked because another thread may have already retrained
+$$\mathbf{w} = (\mathbf{X}^T\mathbf{X} + \alpha \mathbf{I})^{-1} \mathbf{X}^T\mathbf{y}$$
 
-This means the expensive training step only executes when genuinely new carbon data has been ingested — typically once every 30 minutes — while subsequent API requests within that window get instant cache hits.
+Crucially, the matrices $\mathbf{X}^T\mathbf{X}$ (the Gram matrix) and $\mathbf{X}^T\mathbf{y}$ are **additive** — they can be accumulated incrementally without storing the full training matrix. This means we can save these compact statistics after the initial training and update them with only the new data, then re-solve the tiny $65 \times 65$ linear system instantly.
+
+Each datacenter's model state is stored in an in-memory dictionary containing:
+
+| Cached Statistic | Shape | Purpose |
+|:-----------------|:------|:--------|
+| `XtX` | $(65, 65)$ | Gram matrix in scaled space |
+| `Xty_raw` | $(65,)$ | Cross-product $\mathbf{X}^T\mathbf{y}$ |
+| `scaler` | `StandardScaler` | Feature normaliser, frozen after cold start |
+| `alpha` | scalar | Regularisation strength from initial `RidgeCV` |
+| `coef`, `intercept` | $(65,)$, scalar | Current model parameters |
+| `n_train` | int | Number of training points at last update |
+
+The prediction cycle works in two modes:
+
+1. **Cold start** (first run per datacenter): builds the full ~2M-row feature matrix, fits `RidgeCV` to select $\alpha$, and caches the sufficient statistics and scaler. This runs under a threading lock with a double-check pattern to prevent duplicate work across threads.
+2. **Warm update** (new data arrived, `n_train` increased): builds feature rows only for the new data points, transforms them using the frozen scaler, and accumulates them into the existing Gram matrix and cross-product. Re-solving the $65 \times 65$ system is instantaneous. For a single new 30-minute reading, this produces ~112 rows $\times$ 65 columns $\approx$ **58 KB** of new data — versus ~1 GB for a full rebuild.
+
+This design ensures that after the one-time cold start, the service never rebuilds the full training matrix. Every subsequent 30-minute cycle processes only the incremental data, keeping peak memory usage low and retraining effectively instant.
 
 ### The Ridge Regression Predictor (`ridge_enhanced.py`)
 
@@ -332,9 +305,9 @@ Weather data is fetched from the Open-Meteo Archive API for training and the Ope
 
 #### Training & Inference
 
-**Training** is deterministic and fast (under 1 second). The 65-feature matrix is standardised using `StandardScaler` (zero mean, unit variance), then passed to `RidgeCV` — a Ridge regression with built-in leave-one-out cross-validation over 8 regularisation strengths $\alpha \in \{0.01, 0.1, 0.5, 1, 5, 10, 50, 100\}$. `RidgeCV` automatically selects the $\alpha$ that minimises the cross-validated error, balancing model complexity against overfitting.
+**Initial training** (cold start) is deterministic and fast (under 1 second). The 65-feature matrix is standardised using `StandardScaler` (zero mean, unit variance), then passed to `RidgeCV` — a Ridge regression with built-in leave-one-out cross-validation over 8 regularisation strengths $\alpha \in \{0.01, 0.1, 0.5, 1, 5, 10, 50, 100\}$. `RidgeCV` automatically selects the $\alpha$ that minimises the cross-validated error, balancing model complexity against overfitting. After this initial fit, the sufficient statistics and scaler are frozen and cached as described in the [incremental training](#incremental-training-via-sufficient-statistics) section above — subsequent cycles only process new data.
 
-**Inference** applies the same scaler transform to the test features (built from the forecast timestamps and current weather forecast), then clips predictions to the physical range $[0, 500]$ gCO₂/kWh. The raw 336-step forecast at 30-minute resolution is then resampled to 5-minute resolution via linear interpolation, yielding 2,016 data points covering the next 7 days.
+**Inference** applies the frozen scaler to the test features (built from the forecast timestamps and current weather forecast), multiplies by the cached coefficient vector, and clips predictions to the physical range $[0, 500]$ gCO₂/kWh. The raw 336-step forecast at 30-minute resolution is then resampled to 5-minute resolution via linear interpolation, yielding 2,016 data points covering the next 7 days.
 
 ### REST API
 

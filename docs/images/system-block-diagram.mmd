@@ -1,0 +1,14 @@
+flowchart LR
+    User(("User"))
+    UI["UI<br/><i>Next.js</i>"]
+    Scheduler["Scheduler<br/><i>C++ / Drogon</i>"]
+    Stats["Stats<br/><i>Python / FastAPI</i>"]
+    Carbon["UK Carbon Intensity API<br/>+ Open-Meteo"]
+
+    User -->|"submit job"| UI
+    UI -->|"POST schedule request"| Scheduler
+    Scheduler -->|"GET forecasts"| Stats
+    Stats -->|"forecasts"| Scheduler
+    Scheduler -->|"optimised schedule"| UI
+    UI -->|"display result"| User
+    Carbon -->|"carbon & weather data"| Stats
