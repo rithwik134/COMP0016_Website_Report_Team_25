@@ -24,7 +24,65 @@
 
 ### Development Team
 
-*TODO: Team bios with photos*
+<section class="team-section" aria-label="Development Team">
+	<div class="team-grid">
+		<article class="team-card">
+			<div class="team-photo-placeholder" role="img" aria-label="Member 1 photo placeholder">Photo</div>
+			<div class="team-details">
+				<h4 class="team-name">Member 1 Name</h4>
+				<p class="team-course">Course: [Course Name]</p>
+				<p class="team-contribution">Project Contribution: [Part of Project]</p>
+			</div>
+			<div class="team-links">
+				<a class="team-link-btn" href="mailto:member1@ucl.ac.uk">Email</a>
+				<a class="team-link-btn" href="https://github.com/member1" target="_blank" rel="noopener noreferrer">GitHub</a>
+				<a class="team-link-btn" href="https://www.linkedin.com/in/member1" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+			</div>
+		</article>
+
+		<article class="team-card">
+			<div class="team-photo-placeholder" role="img" aria-label="Member 2 photo placeholder">Photo</div>
+			<div class="team-details">
+				<h4 class="team-name">Member 2 Name</h4>
+				<p class="team-course">Course: [Course Name]</p>
+				<p class="team-contribution">Project Contribution: [Part of Project]</p>
+			</div>
+			<div class="team-links">
+				<a class="team-link-btn" href="mailto:member2@ucl.ac.uk">Email</a>
+				<a class="team-link-btn" href="https://github.com/member2" target="_blank" rel="noopener noreferrer">GitHub</a>
+				<a class="team-link-btn" href="https://www.linkedin.com/in/member2" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+			</div>
+		</article>
+
+		<article class="team-card">
+			<div class="team-photo-placeholder" role="img" aria-label="Member 3 photo placeholder">Photo</div>
+			<div class="team-details">
+				<h4 class="team-name">Member 3 Name</h4>
+				<p class="team-course">Course: [Course Name]</p>
+				<p class="team-contribution">Project Contribution: [Part of Project]</p>
+			</div>
+			<div class="team-links">
+				<a class="team-link-btn" href="mailto:member3@ucl.ac.uk">Email</a>
+				<a class="team-link-btn" href="https://github.com/member3" target="_blank" rel="noopener noreferrer">GitHub</a>
+				<a class="team-link-btn" href="https://www.linkedin.com/in/member3" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+			</div>
+		</article>
+
+		<article class="team-card">
+			<div class="team-photo-placeholder" role="img" aria-label="Member 4 photo placeholder">Photo</div>
+			<div class="team-details">
+				<h4 class="team-name">Member 4 Name</h4>
+				<p class="team-course">Course: [Course Name]</p>
+				<p class="team-contribution">Project Contribution: [Part of Project]</p>
+			</div>
+			<div class="team-links">
+				<a class="team-link-btn" href="mailto:member4@ucl.ac.uk">Email</a>
+				<a class="team-link-btn" href="https://github.com/member4" target="_blank" rel="noopener noreferrer">GitHub</a>
+				<a class="team-link-btn" href="https://www.linkedin.com/in/member4" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+			</div>
+		</article>
+	</div>
+</section>
 
 ---
 
