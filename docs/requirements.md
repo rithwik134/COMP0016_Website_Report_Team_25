@@ -2,7 +2,8 @@
 ---
 ### Project Background
 
-AI workloads (e.g., training large models, inference services) are resource-intensive and often deployed without sustainability considerations. As AI demand is rapidly rising, it becomes increasingly important we prioritise reducing carbon emissions for sustainable development of AI technologies. NTTData, as a Green Software Foundation (GSF) Steering Member, has been working towards providing a trusted ecosystem of people, standard, and tools for delivering green software. <br>
+AI workloads (e.g., training large models, inference services) are resource-intensive and often deployed without sustainability considerations. As AI demand is rapidly rising, it becomes increasingly important we prioritise reducing carbon emissions for sustainable development of AI technologies. NTTData, as a Green Software Foundation (GSF) Steering Member, has been working towards providing a trusted ecosystem of people, standard, and tools for delivering green software.
+
 As our client, NTTData assigned us the job of Investigating carbon‑aware scheduling within on‑premise and distributed datacentre environments. The aim is to make environmental performance a first‑class consideration in workload placement, using forecasted carbon‑intensity data and workload flexibility to shift execution toward cleaner periods and locations. By integrating prediction, scheduling, and impact reporting into a single system, the project provides a practical pathway for organisations to reduce emissions from AI operations without redesigning their existing pipelines.
 
 ### Project Goals
@@ -46,14 +47,24 @@ We conducted a series of semi-structured interviews on potential users of the pr
 ### Personas
 Using the data collected, we created personas and scenarios for our target users.
 
-![Persona 1, Bob Lecun. AI Researcher and Developer](images/persona-bob.png)
+![Persona 1, Tim Jackson. Junior Devops Technician of Autonomous Drones Company](images/persona-tim.png)
 /// caption
-Persona 1, Bob Lecun. AI Researcher and Developer
+Persona 1, Tim Jackson. Junior Devops Technician of Autonomous Drones Company
 ///
-![Persona 2, Tim Jackson. Junior Devops Technician of Autonomous Drones Company](images/persona-tim.png)
+![Persona 2, Bob Lecun. AI Researcher and Developer](images/persona-bob.png)
 /// caption
-Persona 2, Tim Jackson. Junior Devops Technician of Autonomous Drones Company
+Persona 2, Bob Lecun. AI Researcher and Developer
 ///
+
+Based on the surveys, personas, and early design discussions, our team identified several high-level requirements that shape the system:
+
+1. **Optimise placement across multiple premises**: Existing carbon-aware tools typically optimise when a workload runs, but assume it will always run in a single datacentre. To achieve deeper carbon reductions, the system should consider both time and location. Allowing workloads to move between premises enables the scheduler to take advantage of cleaner regions rather than relying on the variability of a single site. This also requires accounting for practical overheads, such as the startup cost of launching a job in a new datacentre.
+2. **Split workloads into smaller, schedulable blocks**: Many AI workloads are naturally parallelisable, which means they can be broken into smaller units without affecting correctness. By dividing jobs into short, discrete execution blocks, the scheduler gains far more flexibility to place work in low-carbon windows and distribute it across cleaner regions. This fine-grained structure is essential for achieving meaningful carbon savings rather than coarse, all-or-nothing shifts.
+3. **Provide a clear comparison against an unoptimised schedule**: Users need to understand the impact of carbon-aware scheduling in real, tangible terms. The system should therefore generate both an optimised schedule and a baseline schedule that prioritises speed alone. The UI should present these side-by-side, along with intuitive metrics showing the carbon saved, so users can easily interpret the benefits of the optimisation.
+4. **Ensure the system remains practical and deployable**: Carbon-aware scheduling must work within real operational constraints. The system should respect job deadlines, datacentre availability, and workload requirements, and it should integrate cleanly with existing pipelines. The goal is not to redesign how AI workloads are written, but to make smarter decisions about when and where they run.
+5. **Support transparent, standards-aligned reporting**: To make the results meaningful and comparable, the system should produce impact estimates aligned with recognised green-software metrics (e.g., SCI). This ensures that organisations can trust and reuse the outputs in their own sustainability reporting.
+
+Further conclusions are drawn in the MoSCoW requirements at the bottom of the page.
 
 ### Use Cases
 TO-DO
