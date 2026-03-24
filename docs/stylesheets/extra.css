@@ -108,14 +108,14 @@ code, pre {
 }
 
 .team-course {
-  margin: 0.15rem 0 0;
+  margin: 0;
   color: var(--md-default-fg-color--light);
 }
 
 .team-details {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.02rem;
   margin-bottom: 0.75rem;
 }
 
@@ -132,33 +132,40 @@ code, pre {
   justify-content: center;
 }
 
-.team-link-btn {
-  display: inline-block;
-  padding: 0.3rem 0.7rem;
-  border-radius: 999px;
+.team-link-icon {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
   border: 1px solid #2f8b7e;
   color: #1f665c;
   background: #ffffff;
-  font-size: 0.84rem;
-  font-weight: 700;
   text-decoration: none;
   transition: all 0.2s ease;
 }
 
-.team-link-btn:hover,
-.team-link-btn:focus {
+.team-link-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.team-link-icon:hover,
+.team-link-icon:focus {
   background: #2f8b7e;
   color: #ffffff;
 }
 
-[data-md-color-scheme="slate"] .team-link-btn {
+[data-md-color-scheme="slate"] .team-link-icon {
   border-color: #86d7c5;
   color: #a2e7d8;
   background: rgba(255, 255, 255, 0.05);
 }
 
-[data-md-color-scheme="slate"] .team-link-btn:hover,
-[data-md-color-scheme="slate"] .team-link-btn:focus {
+[data-md-color-scheme="slate"] .team-link-icon:hover,
+[data-md-color-scheme="slate"] .team-link-icon:focus {
   background: #86d7c5;
   color: #10211d;
 }

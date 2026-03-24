@@ -34,9 +34,21 @@
 				<p class="team-contribution">Project Contribution: [Part of Project]</p>
 			</div>
 			<div class="team-links">
-				<a class="team-link-btn" href="mailto:member1@ucl.ac.uk">Email</a>
-				<a class="team-link-btn" href="https://github.com/member1" target="_blank" rel="noopener noreferrer">GitHub</a>
-				<a class="team-link-btn" href="https://www.linkedin.com/in/member1" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+				<a class="team-link-icon" href="mailto:member1@ucl.ac.uk" aria-label="Email Member 1">
+					<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+						<path d="M2 5h20v14H2V5zm10 7L4 7v10h16V7l-8 5z" />
+					</svg>
+				</a>
+				<a class="team-link-icon" href="https://github.com/member1" target="_blank" rel="noopener noreferrer" aria-label="GitHub profile for Member 1">
+					<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+						<path d="M12 .5C5.65.5.5 5.65.5 12A11.5 11.5 0 0 0 8.36 22.6c.58.1.79-.25.79-.56v-2.1c-3.19.7-3.86-1.37-3.86-1.37-.52-1.33-1.27-1.68-1.27-1.68-1.04-.71.08-.69.08-.69 1.15.08 1.75 1.18 1.75 1.18 1.02 1.75 2.68 1.24 3.33.95.1-.74.4-1.24.73-1.52-2.55-.29-5.22-1.27-5.22-5.66 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.45.11-3.02 0 0 .96-.31 3.15 1.17a10.92 10.92 0 0 1 5.73 0c2.19-1.48 3.15-1.17 3.15-1.17.62 1.57.23 2.73.11 3.02.73.8 1.18 1.82 1.18 3.07 0 4.4-2.67 5.37-5.23 5.66.41.35.78 1.04.78 2.1v3.11c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z" />
+					</svg>
+				</a>
+				<a class="team-link-icon" href="https://www.linkedin.com/in/member1" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn profile for Member 1">
+					<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+						<path d="M4.98 3.5C4.98 4.88 3.86 6 2.48 6S0 4.88 0 3.5 1.12 1 2.48 1s2.5 1.12 2.5 2.5zM.26 8h4.45v14H.26V8zM8 8h4.27v1.91h.06c.59-1.12 2.04-2.3 4.2-2.3 4.49 0 5.32 2.96 5.32 6.82V22h-4.45v-6.73c0-1.61-.03-3.68-2.24-3.68-2.24 0-2.58 1.75-2.58 3.57V22H8V8z" />
+					</svg>
+				</a>
 			</div>
 		</article>
 
@@ -48,9 +60,21 @@
 				<p class="team-contribution">Project Contribution: [Part of Project]</p>
 			</div>
 			<div class="team-links">
-				<a class="team-link-btn" href="mailto:member2@ucl.ac.uk">Email</a>
-				<a class="team-link-btn" href="https://github.com/member2" target="_blank" rel="noopener noreferrer">GitHub</a>
-				<a class="team-link-btn" href="https://www.linkedin.com/in/member2" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+				<a class="team-link-icon" href="mailto:member2@ucl.ac.uk" aria-label="Email Member 2">
+					<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+						<path d="M2 5h20v14H2V5zm10 7L4 7v10h16V7l-8 5z" />
+					</svg>
+				</a>
+				<a class="team-link-icon" href="https://github.com/member2" target="_blank" rel="noopener noreferrer" aria-label="GitHub profile for Member 2">
+					<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+						<path d="M12 .5C5.65.5.5 5.65.5 12A11.5 11.5 0 0 0 8.36 22.6c.58.1.79-.25.79-.56v-2.1c-3.19.7-3.86-1.37-3.86-1.37-.52-1.33-1.27-1.68-1.27-1.68-1.04-.71.08-.69.08-.69 1.15.08 1.75 1.18 1.75 1.18 1.02 1.75 2.68 1.24 3.33.95.1-.74.4-1.24.73-1.52-2.55-.29-5.22-1.27-5.22-5.66 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.45.11-3.02 0 0 .96-.31 3.15 1.17a10.92 10.92 0 0 1 5.73 0c2.19-1.48 3.15-1.17 3.15-1.17.62 1.57.23 2.73.11 3.02.73.8 1.18 1.82 1.18 3.07 0 4.4-2.67 5.37-5.23 5.66.41.35.78 1.04.78 2.1v3.11c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z" />
+					</svg>
+				</a>
+				<a class="team-link-icon" href="https://www.linkedin.com/in/member2" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn profile for Member 2">
+					<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+						<path d="M4.98 3.5C4.98 4.88 3.86 6 2.48 6S0 4.88 0 3.5 1.12 1 2.48 1s2.5 1.12 2.5 2.5zM.26 8h4.45v14H.26V8zM8 8h4.27v1.91h.06c.59-1.12 2.04-2.3 4.2-2.3 4.49 0 5.32 2.96 5.32 6.82V22h-4.45v-6.73c0-1.61-.03-3.68-2.24-3.68-2.24 0-2.58 1.75-2.58 3.57V22H8V8z" />
+					</svg>
+				</a>
 			</div>
 		</article>
 
@@ -62,9 +86,21 @@
 				<p class="team-contribution">Project Contribution: [Part of Project]</p>
 			</div>
 			<div class="team-links">
-				<a class="team-link-btn" href="mailto:member3@ucl.ac.uk">Email</a>
-				<a class="team-link-btn" href="https://github.com/member3" target="_blank" rel="noopener noreferrer">GitHub</a>
-				<a class="team-link-btn" href="https://www.linkedin.com/in/member3" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+				<a class="team-link-icon" href="mailto:member3@ucl.ac.uk" aria-label="Email Member 3">
+					<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+						<path d="M2 5h20v14H2V5zm10 7L4 7v10h16V7l-8 5z" />
+					</svg>
+				</a>
+				<a class="team-link-icon" href="https://github.com/member3" target="_blank" rel="noopener noreferrer" aria-label="GitHub profile for Member 3">
+					<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+						<path d="M12 .5C5.65.5.5 5.65.5 12A11.5 11.5 0 0 0 8.36 22.6c.58.1.79-.25.79-.56v-2.1c-3.19.7-3.86-1.37-3.86-1.37-.52-1.33-1.27-1.68-1.27-1.68-1.04-.71.08-.69.08-.69 1.15.08 1.75 1.18 1.75 1.18 1.02 1.75 2.68 1.24 3.33.95.1-.74.4-1.24.73-1.52-2.55-.29-5.22-1.27-5.22-5.66 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.45.11-3.02 0 0 .96-.31 3.15 1.17a10.92 10.92 0 0 1 5.73 0c2.19-1.48 3.15-1.17 3.15-1.17.62 1.57.23 2.73.11 3.02.73.8 1.18 1.82 1.18 3.07 0 4.4-2.67 5.37-5.23 5.66.41.35.78 1.04.78 2.1v3.11c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z" />
+					</svg>
+				</a>
+				<a class="team-link-icon" href="https://www.linkedin.com/in/member3" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn profile for Member 3">
+					<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+						<path d="M4.98 3.5C4.98 4.88 3.86 6 2.48 6S0 4.88 0 3.5 1.12 1 2.48 1s2.5 1.12 2.5 2.5zM.26 8h4.45v14H.26V8zM8 8h4.27v1.91h.06c.59-1.12 2.04-2.3 4.2-2.3 4.49 0 5.32 2.96 5.32 6.82V22h-4.45v-6.73c0-1.61-.03-3.68-2.24-3.68-2.24 0-2.58 1.75-2.58 3.57V22H8V8z" />
+					</svg>
+				</a>
 			</div>
 		</article>
 
@@ -76,9 +112,21 @@
 				<p class="team-contribution">Project Contribution: [Part of Project]</p>
 			</div>
 			<div class="team-links">
-				<a class="team-link-btn" href="mailto:member4@ucl.ac.uk">Email</a>
-				<a class="team-link-btn" href="https://github.com/member4" target="_blank" rel="noopener noreferrer">GitHub</a>
-				<a class="team-link-btn" href="https://www.linkedin.com/in/member4" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+				<a class="team-link-icon" href="mailto:member4@ucl.ac.uk" aria-label="Email Member 4">
+					<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+						<path d="M2 5h20v14H2V5zm10 7L4 7v10h16V7l-8 5z" />
+					</svg>
+				</a>
+				<a class="team-link-icon" href="https://github.com/member4" target="_blank" rel="noopener noreferrer" aria-label="GitHub profile for Member 4">
+					<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+						<path d="M12 .5C5.65.5.5 5.65.5 12A11.5 11.5 0 0 0 8.36 22.6c.58.1.79-.25.79-.56v-2.1c-3.19.7-3.86-1.37-3.86-1.37-.52-1.33-1.27-1.68-1.27-1.68-1.04-.71.08-.69.08-.69 1.15.08 1.75 1.18 1.75 1.18 1.02 1.75 2.68 1.24 3.33.95.1-.74.4-1.24.73-1.52-2.55-.29-5.22-1.27-5.22-5.66 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.45.11-3.02 0 0 .96-.31 3.15 1.17a10.92 10.92 0 0 1 5.73 0c2.19-1.48 3.15-1.17 3.15-1.17.62 1.57.23 2.73.11 3.02.73.8 1.18 1.82 1.18 3.07 0 4.4-2.67 5.37-5.23 5.66.41.35.78 1.04.78 2.1v3.11c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z" />
+					</svg>
+				</a>
+				<a class="team-link-icon" href="https://www.linkedin.com/in/member4" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn profile for Member 4">
+					<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+						<path d="M4.98 3.5C4.98 4.88 3.86 6 2.48 6S0 4.88 0 3.5 1.12 1 2.48 1s2.5 1.12 2.5 2.5zM.26 8h4.45v14H.26V8zM8 8h4.27v1.91h.06c.59-1.12 2.04-2.3 4.2-2.3 4.49 0 5.32 2.96 5.32 6.82V22h-4.45v-6.73c0-1.61-.03-3.68-2.24-3.68-2.24 0-2.58 1.75-2.58 3.57V22H8V8z" />
+					</svg>
+				</a>
 			</div>
 		</article>
 	</div>
