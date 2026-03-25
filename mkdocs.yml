@@ -82,5 +82,6 @@ nav:
   - Implementation: implementation.md
   - Testing: testing.md
   - Evaluation: evaluation.md
+  - Possible Extensions: possible-extensions.md
   - ML Dev Journal: dev-journal.md
   - Appendices: appendices.md
