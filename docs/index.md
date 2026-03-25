@@ -30,4 +30,4 @@
 
 ### Project Management
 
-*TODO: Gantt chart*
+<iframe src="gantt-chart.html" width="100%" height="600" style="border:none;"></iframe>

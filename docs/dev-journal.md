@@ -404,14 +404,33 @@ We updated `predictor.py` to import from the new module and removed the 60-day h
 
 The old `predictor_direct_ridge.py` (MAE 32.99) is kept for reference. The experiment file `predictor_ensemble.py` retains all benchmark code (PyTorch MLP, LightGBM, ensemble strategies) for future experimentation.
 
+### Incremental Training via Cached Sufficient Statistics
+
+A naive implementation would rebuild the full feature matrix from scratch every 30-minute prediction cycle. With ~17,500 historical readings per region expanded via the direct multi-step strategy to ~2 million training samples, this would spike RAM usage to ~1 GB per datacenter -- unacceptable for a lightweight oracle server.
+
+We solved this by exploiting a key property of Ridge regression: its closed-form solution depends only on two compact matrices:
+
+$$\mathbf{w} = (\mathbf{X}^T\mathbf{X} + \alpha \mathbf{I})^{-1} \mathbf{X}^T\mathbf{y}$$
+
+The Gram matrix $\mathbf{X}^T\mathbf{X}$ (65 x 65) and cross-product $\mathbf{X}^T\mathbf{y}$ (65 x 1) are **additive** -- they can be accumulated incrementally without ever storing the full training matrix. After the one-time cold start, each 30-minute cycle only processes the new data points:
+
+1. **Cold start** (first run per datacenter): builds the full feature matrix, fits `RidgeCV` to select the regularisation strength $\alpha$, and caches the sufficient statistics and scaler.
+2. **Warm update** (subsequent cycles): builds feature rows only for new data, transforms them with the frozen scaler, and accumulates them into the existing Gram matrix and cross-product. Re-solving the 65 x 65 linear system is instantaneous.
+
+For a single new 30-minute reading, a warm update produces ~112 rows x 65 columns = **58 KB** of new data, versus ~1 GB for a full rebuild. This keeps peak memory low and retraining effectively instant -- a critical requirement for the oracle server deployment.
+
+This approach is another reason Ridge was the right model choice: the closed-form solution makes incremental updates trivial. Neural networks (MLP) and tree-based models (LightGBM, XGBoost) have no equivalent -- they would require full retraining or complex online learning schemes that are far harder to implement correctly.
+
 ### Production Characteristics
 
 | Property | Value |
 | -------- | ----- |
-| Training time | < 1 sec / region |
+| Training time | < 1 sec / region (warm update); ~1 sec (cold start) |
+| Incremental update cost | ~58 KB per new reading vs ~1 GB full rebuild |
 | Dependencies | scikit-learn, numpy, pandas, requests |
 | Deterministic | Yes |
 | Model state | ~1 KB / region (65 coefficients + scaler) |
+| Cached statistics | ~34 KB / region (65x65 Gram matrix + cross-product + scaler) |
 | Hyperparameters | 0 manual (RidgeCV auto-selects alpha) |
 
 ---
