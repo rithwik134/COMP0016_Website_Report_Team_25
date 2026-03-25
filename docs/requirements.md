@@ -81,42 +81,48 @@ Use-Case Diagram for the program
 
 | ID | Requirement | Priority |
 | --- | --- | --- |
-| 1 | Ingest AI workload parameters and generate valid schedules. | Must Have |
-| 2 | Optimize scheduling across time and datacenter location to reduce emissions. | Must Have |
-| 3 | Use carbon-intensity signals in scheduling decisions. | Must Have |
-| 4 | Calculate and report emissions for optimized schedules. | Must Have |
-| 5 | Provide API and UI outputs for scheduling and results. | Must Have |
-| 6 | Compare optimized schedules against a baseline to show savings. | Should Have |
-| 7 | Split workloads into short execution blocks for finer optimization. | Should Have |
-| 8 | Include datacenter-level operating factors in optimization decisions. | Should Have |
-| 9 | Persist schedule history and enable previous-job review. | Should Have |
-| 10 | Support configurable scheduling constraints and optimization settings. | Should Have |
-| 11 | Handle incomplete upstream data with fallback behavior. | Should Have |
-| 12 | Richer visual reporting for trends and per-job impact. | Could Have |
-| 13 | Multi-objective readiness for carbon, timing, and operational trade-offs. | Could Have |
-| 14 | Support dynamic datacenter options configured in the UI. | Could Have |
-| 15 | Generate own forecast of carbon intensity using factors that influence carbon intensity (e.g. weather). | Could Have |
-| 16 | Full cross-cloud autonomous orchestration and billing integration. | Won’t Have |
-| 17 | Embodied carbon accounting of hardware lifecycle. | Won’t Have |
+| 1 | Ability to schedule a workload using specified parameters (e.g. total workload, deadline). | Must Have |
+| 2 | Display information about emissions (e.g. total carbon emissions, SCI, electrical usage) after scheduling. | Must Have |
+| 3 | Ability to view previously scheduled workloads. | Must Have |
+| 4 | Ability to delete previously scheduled workloads. | Must Have |
+| 5 | Graphically display when and where a workload is scheduled to run. | Should Have |
+| 6 | Ability to view all workloads scheduled with the software simultaneously on a single graph. | Should Have |
+| 7 | Provide information about carbon intensity at different times and datacentres, so users can evaluate the optimality of the schedule themselves. | Should Have |
+| 8 | Provide the user with information about the maximum forecasting window. | Should Have |
+| 9 | Provide the user with the percentage of carbon saved compared to a trivial schedule. | Should Have |
+| 10 | Display maximum capacity and exogenous load at each datacentre, providing more insight to the user. | Could Have |
+| 11 | Workload description and configuration using hardware-specific information (GPU type, model size, number of GPUs, duration). | Could Have |
+| 12 | Allow modification of the available datacentre set to schedule on. | Could Have |
+| 13 | Map presenting the geographical location of datacentres. | Could Have |
+| 14 | Allow the user to visually compare a trivial schedule to the optimised schedule. | Could Have |
+| 15 | Ability to run actual workloads on datacentres. | Won’t Have |
+| 16 | Full IAM and compliance certification stack. | Won’t Have |
 
-#### Non-Functional Requirements 
+#### Non-Functional Requirements
 
 | ID | Requirement | Priority |
 | --- | --- | --- |
-| 1 | Reliable execution of core scheduling and prediction flows. | Must Have |
-| 2 | Accurate and consistent impact calculations. | Must Have |
-| 3 | Clear and interpretable outputs for non-specialist users. | Must Have |
-| 4 | Standards-aligned impact reporting using SCI-oriented principles. | Must Have |
-| 5 | Modular, testable architecture across services and UI. | Should Have |
-| 6 | End-to-end traceability from workload input to impact output. | Should Have |
-| 7 | Interactive performance for schedule generation and result display. | Should Have |
-| 8 | Scalability for larger job volumes and longer planning horizons. | Should Have |
-| 9 | Observability through logs and diagnostics. | Should Have |
-| 10 | Reproducible outputs under fixed inputs and configuration. | Should Have |
-| 11 | Robust input validation and safe API handling. | Should Have |
-| 12 | Audit-friendly historical records for review and reporting. | Should Have |
-| 13 | Extended analytics views for stakeholder reporting. | Could Have |
-| 14 | Configurability for organization-specific policy tuning. | Could Have |
-| 15 | Readiness for broader enterprise integration paths. | Could Have |
-| 16 | Formal enterprise-grade HA/SLA guarantees. | Won’t Have |
-| 17 | Full IAM and compliance certification stack. | Won’t Have |
+| 1 | The forecasting service must predict carbon intensity and load served for the defined prediction window. | Must Have |
+| 2 | The forecasting service must make predictions available for any time period within the prediction window. | Must Have |
+| 3 | The forecasting service must support a prediction window length of at least 2 days. | Must Have |
+| 4 | The scheduling engine must optimise workloads constrained by user specifications (e.g. total workload in kWh). | Must Have |
+| 5 | The scheduling engine must account for both temporal and spatial optimisation. | Must Have |
+| 6 | The scheduling engine must be deterministic, producing reproducible results. | Must Have |
+| 7 | The forecasting service should fetch predicted and actual carbon intensity data from the Carbon Intensity API. | Should Have |
+| 8 | The forecasting service should support live fetching and provision of data. | Should Have |
+| 9 | The forecasting service should support a prediction window of at least 3 days. | Should Have |
+| 10 | The scheduling engine should support additional optimisation constraints (startup overhead, datacentre capacity, exogenous load). | Should Have |
+| 11 | The scheduling engine should calculate a trivial schedule for comparison. | Should Have |
+| 12 | The scheduling engine should persist schedules and trivial schedules to the database to allow later retrieval. | Should Have |
+| 13 | The forecasting service could support a prediction window of at least 7 days. | Could Have |
+| 14 | The forecasting service could provide historical carbon intensity data up to a year back with high efficiency. | Could Have |
+| 15 | The forecasting service could predict carbon intensity using a lightweight proprietary model. | Could Have |
+| 16 | The forecasting service could provide capacity data for each datacentre. | Could Have |
+| 17 | The forecasting service could support a prediction granularity of at least 5 minutes. | Could Have |
+| 18 | The scheduling engine could allow workloads to be described using hardware specifics (GPU type, number of GPUs, workload duration, model size). | Could Have |
+| 19 | The scheduling engine could improve algorithm efficiency to allow for quick schedule computation. | Could Have |
+| 20 | The scheduling engine could ensure high and easy scalability with hardware (number of threads, vCPUs). | Could Have |
+| 21 | The forecasting service will not support predictions for locations outside the United Kingdom. | Won’t Have |
+| 22 | The forecasting service will not support a prediction window longer than 7 days. | Won’t Have |
+| 23 | The scheduling engine will not execute actual workloads on datacentres. | Won’t Have |
+| 24 | The scheduling engine will not support parallel computation of different scheduling requests. | Won’t Have |
