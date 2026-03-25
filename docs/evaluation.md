@@ -165,7 +165,7 @@ The transition from a naive scalar implementation to a cache-aware, SIMD-acceler
 
 ## Critical Evaluation of the Forecasting Model
 
-An evaluation of the RidgeFull production model (MAE 24.88), the forecasting engine behind the Stats service. For context on terminology (lag features, Fourier harmonics, direct vs recursive forecasting, origin statistics, etc.), see the [Algorithms](algorithms.md) page.
+An evaluation of the RidgeFull production model (MAE 24.88), the forecasting engine behind the Stats service. For context on terminology (lag features, Fourier harmonics, direct vs recursive forecasting, origin statistics, etc.), see the [Research — Forecasting Model Research](research.md#forecasting-model-research) page. For the full experimental history, see the [ML Development Journal](dev-journal.md) and [Experiment Report](appendices.md#forecasting-experiment-report).
 
 ### What the Model Does Well
 
@@ -180,7 +180,10 @@ model family.
 **Production-grade characteristics.** Sub-second training, full determinism,
 zero manual hyperparameters (RidgeCV auto-selects alpha), and a minimal
 dependency footprint (scikit-learn only). These properties matter for a system
-that retrains on every prediction cycle across multiple regions.
+that retrains on every prediction cycle across multiple regions. Since the Stats
+service operates as a lightweight oracle server on shared infrastructure, the
+model must remain CPU-only and low-overhead -- Ridge's ~1 KB model state per
+region and sub-second training make it well-suited to this deployment context.
 
 **Weather forecast integration.** Unlike the v1 Direct-Ridge (which used lag-1
 weather observations for all horizon steps), RidgeFull uses per-horizon weather:

@@ -154,9 +154,7 @@ Creating this foundational infrastructure was technically demanding, but it fund
 
 ## Forecasting Service (Stats Component)
 
-The Stats service is a **FastAPI** application in Python that continuously ingests carbon intensity data, trains a Ridge regression model per data center, and serves 7-day carbon intensity forecasts at 5-minute resolution to the C++ Scheduler via a REST API. For details on model selection and experimental comparison against alternative approaches, see the [Research](research.md) page.
-
-<!-- TODO: update the Research link above to point to the specific model-research anchor once that section is written -->
+The Stats service is a **FastAPI** application in Python that continuously ingests carbon intensity data, trains a Ridge regression model per data center, and serves 7-day carbon intensity forecasts at 5-minute resolution to the C++ Scheduler via a REST API. For details on model selection and experimental comparison against alternative approaches, see the [Research — Forecasting Model Research](research.md#forecasting-model-research) page. The full development narrative is documented in the [ML Development Journal](dev-journal.md).
 
 ### Service Architecture
 
