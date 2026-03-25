@@ -109,25 +109,43 @@ Plugging these reasonable upper bounds into the complexity formula yields roughl
 
 ### Profiling and Bottleneck Identification
 
-Before initiating the hardware-level optimizations, we profiled the our initial solution using `perf` to identify exact execution bottlenecks. The profiling revealed three critical issues:
+Before initiating the hardware-level optimizations, we profiled the initial scalar implementation using Linux `perf` sampling at 997 Hz to identify exact execution bottlenecks. The hardware performance counters revealed three critical issues at the microarchitectural level:
+
 1.  **Cache Thrashing:** The L1 data cache miss rate was excessively high (approx. 25%). This was traced directly to the scattered memory access patterns of the Array of Structs (AoS) architecture during spatial merges.
 2.  **Instruction Throughput:** The DP hot-path accounted for over 60% of total CPU time, operating at a poor 0.85 instructions per cycle (IPC) due to complex scalar branching.
-3.  **Allocator Contention:** Dynamic memory allocations (`operator new`/`delete`) inside the innermost loops consumed roughly 22% of the execution time. 
+3.  **Allocator Contention:** Dynamic memory allocations (`operator new`/`delete`) inside the innermost loops consumed roughly 22% of the execution time.
 
-These metrics directly dictated the sequence of our refactoring efforts: removing allocations, flattening memory structures, and finally applying SIMD.
+To visualize where these bottlenecks manifested in the call stack, we generated an interactive flame graph from the same profiling session. The graph reveals that while `calc_single` (the core DP solver) accounted for **~90% of inclusive time**, only **~42% was actual computation** — the rest was overhead from the naive data layout and allocation patterns:
+
+[**Open Interactive Flame Graph — Before Optimization (Scalar Baseline)**](images/benchmarks/flamegraph_before.svg){ target="_blank" }
+*Hover over frames for sample counts and self-percentages; click to zoom into a subtree; Ctrl+F to search. The wide bars under `calc_single` represent overhead that the optimizations below systematically eliminated.*
+
+The flame graph exposed four dominant sources of overhead inside `calc_single`, each mapping directly to the hardware counter anomalies above:
+
+| Overhead source | Inclusive % | Root cause |
+|---|---|---|
+| `operator new` / `operator delete` | **~22%** | MemoEntry vectors dynamically allocated and freed on every DP state transition |
+| `MemoEntry::operator=` / `MemoEntry::MemoEntry` | **~7%** | AoS layout forces per-struct `memcpy` on every path-reconstruction update |
+| `vector<MemoEntry>::_M_realloc_insert` | **~7%** | Inner-loop vectors repeatedly resized, triggering `memmove` bulk copies |
+| `cost_lookup` → hash table | **~6%** | Cost function values recalculated via `std::unordered_map` lookup per transition |
+
+These metrics directly dictated the sequence of our refactoring efforts: removing allocations, flattening memory structures, and finally applying SIMD. Each of the three optimizations below directly addresses one or more of these overhead categories.
 
 ### Memory Layout: From AoS to SoA
-The initial implementation used an **Array of Structs (AoS)** approach to store the data necessary for path reconstruction. While intuitive, this was suboptimal for the CPU's cache hierarchy. We refactored these structures into a **Struct of Arrays (SoA)** format.
+The initial implementation used an **Array of Structs (AoS)** approach to store the data necessary for path reconstruction. While intuitive, this was the primary driver of the 25% L1 cache miss rate identified during profiling — accessing one field of a `MemoEntry` loaded the entire struct into a cache line, evicting useful data. We refactored these structures into a **Struct of Arrays (SoA)** format.
 
-By grouping similar data types (like allocation units and state flags) into contiguous memory blocks, we improved cache hit rates in the L1 and L2 caches. While this cache-locality optimization only yielded approximately a 33% decrease in execution time in the best-case scenarios, it was a vital prerequisite for effective vectorization.
+By grouping similar data types (like allocation units and state flags) into contiguous memory blocks, we dramatically improved cache hit rates in the L1 and L2 caches. This directly eliminated the **~7% overhead** from `MemoEntry` struct copies visible in the flame graph — contiguous arrays of scalars no longer require per-element `memcpy`. While this cache-locality optimization only yielded approximately a 33% decrease in execution time in the best-case scenarios, it was a vital prerequisite for effective vectorization, as SIMD instructions require contiguous, aligned memory lanes to operate efficiently.
 
 ### Hot-Path & Allocation Refinement
-To streamline the innermost loops, we focused on two micro-optimizations:
-1. **Precomputation**: We identified that cost function values were being recalculated across different branches. We implemented a precomputation step that stores these values in a local table, replacing expensive calculations with constant-time memory lookups.
-2. **Allocation Removal**: We eliminated dynamic memory allocations within the "hot-path." By reusing pre-allocated buffers and avoiding the system allocator during the main compute loop, we reduced the overhead per state transition.
+To streamline the innermost loops and address the remaining non-computational overhead, we focused on two micro-optimizations:
+
+1. **Precomputation**: We identified that cost function values were being recalculated across different branches — the **~6% `cost_lookup`** overhead in the flame graph. We implemented a precomputation step that stores these values in a local table, replacing expensive `std::unordered_map` hash-table lookups with constant-time memory indexing.
+2. **Allocation Removal**: We eliminated the **~22% `operator new` / `operator delete`** overhead by removing all dynamic memory allocations from the hot-path. The DP tables are now pre-allocated once using aligned memory (`posix_memalign`) and reused across iterations, completely eliminating the per-transition allocator overhead and the associated **~7% vector reallocation** cost.
+
+Together, these refinements removed approximately 35% of the baseline execution time that was spent entirely on memory management rather than useful computation.
 
 ### SIMD Vectorization & Branchless Logic
-While modern compilers are adept at auto-vectorization, the data dependencies and branching within these DP state transitions proved too complex for the compiler to optimize. To overcome this, we manually applied **AVX-512 SIMD (Single Instruction, Multiple Data)** intrinsics. 
+With the memory layout flattened and allocations removed, the remaining bottleneck was the poor 0.85 IPC caused by complex scalar branching in the DP state transitions. While modern compilers are adept at auto-vectorization, the data dependencies and branching within these transitions proved too complex for the compiler to optimize. To overcome this, we manually applied **AVX-512 SIMD (Single Instruction, Multiple Data)** intrinsics.
 
 By leveraging the non-decreasing nature of our cost function, we implemented branchless logic that allows the CPU to process multiple floating-point DP states simultaneously. While we currently use 64-bit doubles to maintain high precision—processing 8 states per instruction—the engine is architected to support 32-bit floats, which could theoretically double this throughput.
 

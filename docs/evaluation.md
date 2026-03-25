@@ -158,6 +158,23 @@ To understand the efficiency gains, we analyzed the **Speedup Factor** (Baseline
 *   **Peak Performance:** At lower complexity levels, the vectorized engine achieved a **4.0x speedup** over the baseline. This is where the overhead of the original scalar loops was most punitive.
 *   **Asymptotic Behavior:** As complexity increases, the speedup factor tends to converge toward a lower stable ratio (approx. 1.5x). This is an expected result of our **fixed resolution** methodology. Because the resolution is constant (10,000 units), as the total workload increases, the relative density of the DP transitions per unit of work changes. The algorithmic complexity is inversely proportional to the total workload; essentially, as the "workload" grows toward infinity, the fixed-size discretization grid becomes the dominant factor, causing the performance curves of different implementations to meet asymptotically.
 
+### Profiling the Optimized Engine
+
+To validate that the optimizations eliminated the overhead identified during [profiling of the baseline](implementation.md#profiling-the-baseline), we re-profiled the final `Cache_and_Vectorization` build under the same conditions. The resulting flame graph confirms a fundamentally different execution profile:
+
+[**Open Interactive Flame Graph — After Optimization (Cache + AVX-512 SIMD)**](images/benchmarks/flamegraph_after.svg){ target="_blank" }
+*Hover over frames for sample counts and self-percentages; click to zoom into a subtree; Ctrl+F to search.*
+
+The contrast with the baseline flame graph is striking. Where the scalar baseline spent only **~42% of `calc_single` time on actual DP computation**, the optimized engine achieves **85.1% self-time** in `calc_single` — nearly all CPU cycles are now spent on useful SIMD-vectorized state transitions. The overhead categories that previously dominated the profile have been effectively eliminated:
+
+| Overhead source | Before | After | Change |
+|---|---|---|---|
+| `operator new` / `operator delete` | ~22% | <0.1% | Removed from hot-path; single `posix_memalign` pre-allocation |
+| `MemoEntry` struct copies | ~7% | 0% | Eliminated by SoA layout (contiguous scalar arrays) |
+| Vector reallocation (`_M_realloc_insert`) | ~7% | 0% | Eliminated by pre-allocated buffers |
+| Cost function hash lookups | ~6% | 0% | Replaced by precomputed lookup table |
+| **`calc_single` self (useful computation)** | **~42%** | **~85%** | SIMD vectorization + branchless logic |
+
 ### Conclusion on Execution Latency
 
 The transition from a naive scalar implementation to a cache-aware, SIMD-accelerated engine resulted in a **75% reduction in peak latency**. While all versions produced identical scheduling results (validating the mathematical integrity of the optimizations), the vectorized engine is the only version capable of maintaining the "sub-second" response time required for a fluid, interactive user experience during typical scheduling scenarios.
