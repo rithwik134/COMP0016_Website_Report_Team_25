@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>COMP0016 Team 25 - Gantt Chart</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #fff; color: #1a1a2e; padding: 32px; }
+  h1 { font-size: 1.5rem; margin-bottom: 4px; }
+  .subtitle { color: #666; font-size: 0.9rem; margin-bottom: 24px; }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; font-size: 0.8rem; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-swatch { width: 14px; height: 14px; border-radius: 3px; }
+
+  .gantt-container { overflow-x: auto; }
+  .gantt { border-collapse: collapse; width: 100%; min-width: 1100px; font-size: 0.78rem; }
+  .gantt th, .gantt td { border: 1px solid #e0e0e0; padding: 0; text-align: center; }
+  .gantt thead th { background: #f5f5f7; padding: 6px 2px; font-weight: 600; position: sticky; top: 0; z-index: 2; }
+  .gantt thead th.month-header { border-bottom: none; font-size: 0.85rem; }
+  .gantt thead th.week-header { border-top: none; font-size: 0.7rem; color: #888; min-width: 38px; }
+  .gantt .task-name { text-align: left; padding: 5px 10px; font-weight: 500; white-space: nowrap; min-width: 220px; background: #fafafa; position: sticky; left: 0; z-index: 1; }
+  .gantt .section-header { text-align: left; padding: 6px 10px; font-weight: 700; background: #eef; color: #333; font-size: 0.82rem; }
+  .gantt td.bar { padding: 3px 1px; height: 28px; vertical-align: middle; }
+
+  /* Team member colours */
+  .ali    { background: #4e79a7; border-radius: 3px; height: 18px; }
+  .ken    { background: #f28e2b; border-radius: 3px; height: 18px; }
+  .maks   { background: #e15759; border-radius: 3px; height: 18px; }
+  .rithwik{ background: #76b7b2; border-radius: 3px; height: 18px; }
+  .all    { background: #59a14f; border-radius: 3px; height: 18px; }
+  .milestone { background: #b07aa1; border-radius: 3px; height: 18px; }
+
+  .bar-ali, .bar-ken, .bar-maks, .bar-rithwik, .bar-all, .bar-milestone {
+    height: 18px; border-radius: 3px; min-width: 100%;
+  }
+  .bar-ali     { background: #4e79a7; }
+  .bar-ken     { background: #f28e2b; }
+  .bar-maks    { background: #e15759; }
+  .bar-rithwik { background: #76b7b2; }
+  .bar-all     { background: #59a14f; }
+  .bar-milestone { background: #b07aa1; }
+</style>
+</head>
+<body>
+
+<h1>Project Gantt Chart</h1>
+<p class="subtitle">Carbon-Aware AI Workload Scheduler &mdash; Team 25 (Oct 2025 &ndash; Mar 2026)</p>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-swatch" style="background:#4e79a7"></div> Ali</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#f28e2b"></div> Ken</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#e15759"></div> Maks</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#76b7b2"></div> Rithwik</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#59a14f"></div> All Team</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#b07aa1"></div> Milestone</div>
+</div>
+
+<div class="gantt-container">
+<table class="gantt" id="gantt-table">
+</table>
+</div>
+
+<script>
+// --- CONFIG ---
+const START = new Date('2025-10-20');
+const END   = new Date('2026-03-22');
+const MONTHS = ['Oct','Nov','Dec','Jan','Feb','Mar'];
+
+// Weeks: each column is one week starting from START
+function weeksBetween(a, b) {
+  return Math.ceil((b - a) / (7 * 864e5));
+}
+const totalWeeks = weeksBetween(START, END);
+
+// Helper: week index for a date
+function weekOf(dateStr) {
+  const d = new Date(dateStr);
+  return Math.floor((d - START) / (7 * 864e5));
+}
+
+// Tasks: [name, startDate, endDate, colorClass]
+const sections = [
+  {
+    name: 'Research & Planning',
+    tasks: [
+      ['Client meetings & requirements gathering',   '2025-10-20', '2025-11-16', 'bar-all'],
+      ['HCI coursework (personas, surveys, prototypes)', '2025-10-27', '2025-11-23', 'bar-all'],
+      ['Literature review & related projects',       '2025-11-03', '2025-12-07', 'bar-all'],
+      ['Technology review & stack selection',         '2025-11-17', '2025-12-07', 'bar-all'],
+      ['API schema design (OpenAPI specs)',           '2025-12-01', '2025-12-14', 'bar-ken'],
+      ['System architecture design',                 '2025-12-01', '2025-12-14', 'bar-all'],
+    ]
+  },
+  {
+    name: 'Scheduler (C++ / Drogon)',
+    tasks: [
+      ['Scheduler prototype & DP algorithm',         '2025-12-08', '2026-01-05', 'bar-maks'],
+      ['CMake build system & tooling setup',         '2025-12-10', '2025-12-21', 'bar-ken'],
+      ['Connect scheduler to Stats API',             '2025-12-28', '2026-01-14', 'bar-maks'],
+      ['HTTP controllers & API endpoints',           '2026-01-12', '2026-01-25', 'bar-ken'],
+      ['PostgreSQL persistence (Calendar)',           '2026-01-14', '2026-02-02', 'bar-ken'],
+      ['Lock-free coroutine scheduling queue',       '2026-01-23', '2026-02-09', 'bar-ken'],
+      ['Trivial (greedy) baseline scheduler',        '2026-02-03', '2026-02-11', 'bar-maks'],
+      ['Unit tests (Boost.Test)',                    '2026-02-05', '2026-02-25', 'bar-ken'],
+      ['Unit unification (FLO/KWh/SCI)',             '2026-03-13', '2026-03-17', 'bar-ken'],
+      ['Hardware specs & dynamic DC capacity',       '2026-03-14', '2026-03-17', 'bar-maks'],
+    ]
+  },
+  {
+    name: 'Stats (Python / FastAPI)',
+    tasks: [
+      ['Initial prediction service (Prophet + fake data)', '2025-12-03', '2025-12-21', 'bar-ali'],
+      ['Synthetic load data generation',             '2025-12-09', '2025-12-21', 'bar-ali'],
+      ['UK Carbon Intensity API integration',        '2026-01-07', '2026-01-27', 'bar-ali'],
+      ['Oracle server deployment & caching',         '2026-01-20', '2026-02-06', 'bar-ali'],
+      ['SARIMAX forecasting experiments',            '2026-02-03', '2026-02-19', 'bar-ali'],
+      ['Ridge regression predictor (production)',    '2026-02-19', '2026-03-06', 'bar-ali'],
+      ['18-model benchmark comparison',              '2026-02-23', '2026-03-06', 'bar-ali'],
+      ['Weather exogenous features (Open-Meteo)',    '2026-03-01', '2026-03-11', 'bar-ali'],
+      ['Carbon data background collector & sync',    '2026-03-06', '2026-03-16', 'bar-ali'],
+      ['Stats refactoring & CI auto-deploy',         '2026-03-15', '2026-03-17', 'bar-ken'],
+    ]
+  },
+  {
+    name: 'UI (Next.js / React)',
+    tasks: [
+      ['UI prototype & frontend scaffold',           '2025-12-03', '2025-12-16', 'bar-rithwik'],
+      ['Frontend-scheduler integration',             '2026-01-12', '2026-01-19', 'bar-rithwik'],
+      ['Workload calendar & schedule results',       '2026-02-03', '2026-02-16', 'bar-rithwik'],
+      ['Dynamic data center configuration',          '2026-03-15', '2026-03-17', 'bar-rithwik'],
+      ['Data center map visualisation',              '2026-03-16', '2026-03-17', 'bar-rithwik'],
+    ]
+  },
+  {
+    name: 'Testing & Evaluation',
+    tasks: [
+      ['Scheduler algorithm testing',               '2026-02-05', '2026-02-25', 'bar-ken'],
+      ['Stats API schema tests',                    '2026-02-11', '2026-02-25', 'bar-ali'],
+      ['Scheduling comparison experiments & graphs', '2026-03-13', '2026-03-17', 'bar-maks'],
+      ['User acceptance testing',                    '2026-03-17', '2026-03-22', 'bar-all'],
+    ]
+  },
+  {
+    name: 'Documentation & Report',
+    tasks: [
+      ['Development blog updates',                   '2025-11-03', '2026-03-22', 'bar-all'],
+      ['Monthly videos',                             '2025-11-24', '2026-03-22', 'bar-all'],
+      ['Report website development',                 '2026-03-10', '2026-03-22', 'bar-all'],
+      ['User & deployment manuals',                  '2026-03-17', '2026-03-22', 'bar-all'],
+      ['GDPR & legal documentation',                 '2026-03-17', '2026-03-22', 'bar-all'],
+    ]
+  },
+  {
+    name: 'Milestones',
+    tasks: [
+      ['HCI Coursework Submission',                  '2025-11-23', '2025-11-23', 'bar-milestone'],
+      ['Pitch Presentation',                         '2026-01-13', '2026-01-13', 'bar-milestone'],
+      ['Project Completion Target',                  '2026-03-22', '2026-03-22', 'bar-milestone'],
+      ['Final Submission Deadline',                  '2026-03-27', '2026-03-27', 'bar-milestone'],
+    ]
+  }
+];
+
+// --- RENDER ---
+const table = document.getElementById('gantt-table');
+
+// Month header row
+const monthRow = document.createElement('tr');
+const taskTh = document.createElement('th');
+taskTh.className = 'month-header task-name';
+taskTh.rowSpan = 2;
+taskTh.textContent = 'Task';
+monthRow.appendChild(taskTh);
+
+// Calculate weeks per month
+let weekDate = new Date(START);
+let monthWeeks = {};
+let weekDates = [];
+for (let w = 0; w < totalWeeks; w++) {
+  const m = weekDate.toLocaleString('en-US', { month: 'short' });
+  monthWeeks[m] = (monthWeeks[m] || 0) + 1;
+  weekDates.push(new Date(weekDate));
+  weekDate = new Date(weekDate.getTime() + 7 * 864e5);
+}
+for (const m of ['Oct','Nov','Dec','Jan','Feb','Mar']) {
+  if (monthWeeks[m]) {
+    const th = document.createElement('th');
+    th.className = 'month-header';
+    th.colSpan = monthWeeks[m];
+    th.textContent = m + (m === 'Oct' || m === 'Nov' || m === 'Dec' ? ' 2025' : ' 2026');
+    monthRow.appendChild(th);
+  }
+}
+
+// Week header row
+const weekRow = document.createElement('tr');
+for (let w = 0; w < totalWeeks; w++) {
+  const th = document.createElement('th');
+  th.className = 'week-header';
+  const d = weekDates[w];
+  th.textContent = d.getDate() + '/' + (d.getMonth()+1);
+  weekRow.appendChild(th);
+}
+
+const thead = document.createElement('thead');
+thead.appendChild(monthRow);
+thead.appendChild(weekRow);
+table.appendChild(thead);
+
+const tbody = document.createElement('tbody');
+
+for (const section of sections) {
+  // Section header
+  const sRow = document.createElement('tr');
+  const sTd = document.createElement('td');
+  sTd.className = 'section-header';
+  sTd.colSpan = totalWeeks + 1;
+  sTd.textContent = section.name;
+  sRow.appendChild(sTd);
+  tbody.appendChild(sRow);
+
+  for (const [name, start, end, cls] of section.tasks) {
+    const tr = document.createElement('tr');
+    const nameTd = document.createElement('td');
+    nameTd.className = 'task-name';
+    nameTd.textContent = name;
+    tr.appendChild(nameTd);
+
+    const ws = weekOf(start);
+    const we = weekOf(end);
+
+    for (let w = 0; w < totalWeeks; w++) {
+      const td = document.createElement('td');
+      td.className = 'bar';
+      if (w >= ws && w <= we) {
+        const div = document.createElement('div');
+        div.className = cls;
+        td.appendChild(div);
+      }
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  }
+}
+
+table.appendChild(tbody);
+</script>
+
+</body>
+</html>

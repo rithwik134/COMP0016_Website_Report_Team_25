@@ -1,0 +1,35 @@
+// Shared state across all concurrent child tasks
+class ResultContext {
+    Atomic<int> remaining_tasks = N;
+    Atomic<Handle> continuation = NO_CONTINUATION;
+
+    void on_child_complete() {
+        // fetch_sub returns the previous value. If 1, we are the absolute last task.
+        if (remaining_tasks.fetch_sub(1) == 1) {
+            
+            // Swap to a sentinel value to signal global completion
+            Handle parent = continuation.exchange(WAITING_CONTINUATION);
+            
+            // If the parent already suspended and registered its handle, wake it up
+            if (parent != NO_CONTINUATION) {
+                parent.resume();
+            }
+        }
+    }
+};
+
+class Awaiter {
+    SharedPtr<ResultContext> ctx;
+    
+    // Called by the parent coroutine when it tries to go to sleep
+    bool await_suspend(Handle parent_handle) {
+        Handle expected = NO_CONTINUATION;
+        
+        // RACE CONDITION PREVENTION:
+        // Attempt to register the parent handle. If children finished instantly 
+        // (e.g., zero network latency), continuation is already WAITING_CONTINUATION.
+        // The CAS fails and returns false. The parent skips suspension and 
+        // instantly retrieves the results, preventing a permanent deadlock.
+        return ctx->continuation.compare_exchange(expected, parent_handle);
+    }
+};

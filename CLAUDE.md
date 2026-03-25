@@ -62,3 +62,7 @@ Each page must include specific content per the marking criteria:
 - **Testing**: Strategy, unit/integration/compatibility/performance/UAT with partner feedback
 - **Evaluation**: Achievement table (MoSCoW status), known bugs, individual contribution tables (separate for system + website), critical evaluation, future work
 - **Appendices**: User manual (with screenshots), deployment manual (step-by-step), legal/GDPR, dev blog link, monthly videos
+
+## References
+
+All references on the site must use **IEEE format**. Place references inline or at the bottom of the relevant page, not in CLAUDE.md.

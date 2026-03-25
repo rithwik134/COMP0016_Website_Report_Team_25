@@ -1,25 +1,28 @@
 site_name: "COMP0016 Systems Engineering – Team 25"
 site_description: "Carbon-Aware AI Workload Scheduler – Final Report"
 site_url: "https://students.cs.ucl.ac.uk/2025/group25/"
+repo_url: "https://github.com/akioweh/carbon-aware-ai-agents"
+repo_name: "Carbon-Aware AI Agents"
 
 theme:
   name: material
   palette:
-    - scheme: default
-      primary: teal
-      accent: green
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
     - scheme: slate
       primary: teal
       accent: green
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
+    - scheme: default
+      primary: teal
+      accent: green
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
   font: false
   custom_dir: docs/overrides
   features:
+    - navigation.instant
     - navigation.tabs
     - navigation.tabs.sticky
     - navigation.sections
@@ -79,4 +82,5 @@ nav:
   - Implementation: implementation.md
   - Testing: testing.md
   - Evaluation: evaluation.md
+  - ML Dev Journal: dev-journal.md
   - Appendices: appendices.md

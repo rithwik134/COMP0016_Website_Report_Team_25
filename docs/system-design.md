@@ -83,7 +83,59 @@ System Architecture Diagram showing the flow of data between external providers 
 
 - **UI Component**: A modern, server-side rendered web application built with Next.js. It acts as the primary human-computer interface, visualizing global data center states, plotting environmental metrics, and allowing users to submit task requests and analyze optimized schedules.
 - **Scheduler Component**: The core logical computation engine written in C++23. Leveraging the Drogon HTTP framework, it acts as a stateless optimization service. It pulls telemetry and forecasts from the Stats module, runs a constraint solver based on Dynamic Programming (detailed in [Algorithms](./algorithms.md)), and determines the optimal workload distribution to minimize software carbon intensity.
-- **Stats Component**: A Python-based FastAPI background service that acts as a uniform data interface. It continuously ingests, normalizes, and forecasts external information such as grid carbon intensity, baseline data center load, and regional weather. 
+- **Stats Component**: A Python-based FastAPI background service that acts as a uniform data interface. It continuously ingests, normalizes, and forecasts external information such as grid carbon intensity, baseline data center load, and regional weather.
+
+### Stats Component — Internal Architecture
+
+While the high-level architecture above shows the Stats component as a single block, its internal design involves a multi-stage data pipeline with two SQLite databases, three background threads, and an in-memory model cache. The diagram below details how external carbon and weather data flows through the service — from ingestion to trained model to cached forecast — before being served to the Scheduler via the REST API.
+
+```mermaid
+flowchart TB
+    subgraph External["External APIs"]
+        CI["UK Carbon Intensity API<br/><i>30-min regional readings</i>"]
+        OM["Open-Meteo API<br/><i>Historical archive + 8-day forecast</i>"]
+    end
+
+    subgraph Threads["Background Threads (every 30 min)"]
+        CC["Carbon Collector<br/><code>carbon_collector_loop</code>"]
+        CS["Carbon Sync<br/><code>carbon_sync_loop</code>"]
+        PL["Prediction Loop<br/><code>prediction_loop</code>"]
+    end
+
+    subgraph Storage["SQLite Databases"]
+        CDB[("carbon_intensity.db<br/><i>Raw readings + generation mix</i>")]
+        CACHE[("cache.db<br/><i>Predictions, historical data,<br/>datacenter registry</i>")]
+    end
+
+    MC["In-Memory Model Cache<br/><i>Trained Ridge model + scaler<br/>per datacenter</i>"]
+    RE["ridge_enhanced.py<br/><i>Feature engineering + RidgeCV</i>"]
+
+    subgraph API["REST API (FastAPI)"]
+        EP1["GET /locations/{id}/metrics/<br/>forecast_carbon_intensity"]
+        EP2["GET /locations/{id}/metrics/<br/>forecast_load"]
+        EP3["GET /locations"]
+    end
+
+    SCHED["C++ Scheduler<br/><i>(consumer)</i>"]
+
+    CI -->|"fetch every 30 min"| CC
+    CC -->|"store readings"| CDB
+    CDB -->|"bulk sync"| CS
+    CS -->|"upsert into historical_data"| CACHE
+    CACHE -->|"read training data"| PL
+    PL -->|"invoke per DC"| RE
+    OM -->|"fetch every 30 min<br/>(archive + forecast)"| RE
+    RE -->|"train / cache hit"| MC
+    MC -->|"predict"| RE
+    RE -->|"save forecast JSON"| CACHE
+    CACHE -->|"serve cached forecasts"| API
+    API -->|"HTTP"| SCHED
+```
+/// caption
+Internal architecture of the Stats component, showing the data pipeline from external API ingestion through model training and caching to forecast delivery.
+///
+
+For a detailed explanation of the databases, caching strategy, retraining cadence, and the Ridge regression model itself, see [Implementation — Forecasting Service](implementation.md#forecasting-service-stats-component).
 
 ## Sequence Diagrams
 

@@ -40,7 +40,7 @@ Before writing any code, we produced hand-drawn sketches to explore the core lay
 
 The first sketch established the fundamental layout: a central map showing data centre locations with colour-coded carbon status (green/yellow/red dots), a stats panel on the right, deployment options, and a deployment status section at the bottom.
 
-![Hand-drawn sketch 1 — Basic Orchestrator Panel](images/sketch-1.png)
+![Hand-drawn sketch 1 — Basic Orchestrator Panel](images/stats/sketch-1.png)
 /// caption
 Basic Orchestrator Panel
 ///
@@ -49,7 +49,7 @@ Basic Orchestrator Panel
 
 The second sketch added a constraints sidebar on the left (throughput, latency, capacity reserve sliders), giving users control over scheduling parameters before submitting a job. This became a key feature of the final design.
 
-![Hand-drawn sketch 2 — Orchestrator Panel with Constraints](images/sketch-2.png)
+![Hand-drawn sketch 2 — Orchestrator Panel with Constraints](images/stats/sketch-2.png)
 /// caption
 Orchestrator Panel with Constraints
 ///
@@ -66,7 +66,7 @@ We translated our sketches into high-fidelity wireframes to validate the layout 
 
 The main dashboard realises the sketch layout: a map of data centre locations with carbon status indicators, constraints sliders on the left, deployment status bars at the bottom, and key stats (carbon savings, current metrics) on the right.
 
-![Hi-fi wireframe — Orchestrator Panel dashboard](images/hifi-wireframe-1.png)
+![Hi-fi wireframe — Orchestrator Panel dashboard](images/stats/hifi-wireframe-1.png)
 /// caption
 Orchestrator Panel dashboard
 ///
@@ -75,7 +75,7 @@ Orchestrator Panel dashboard
 
 Hovering over a data centre on the map shows a tooltip with the location name, current status, load, and carbon intensity in gCO2/kWh. The workload distribution section on the right shows how shifting workloads between locations affects carbon savings.
 
-![Hi-fi wireframe — Orchestrator Panel with map interaction](images/hifi-wireframe-2.png)
+![Hi-fi wireframe — Orchestrator Panel with map interaction](images/stats/hifi-wireframe-2.png)
 /// caption
 Orchestrator Panel with map interaction
 ///
@@ -84,7 +84,7 @@ Orchestrator Panel with map interaction
 
 After clicking "Analyze and Deploy", users are presented with deployment strategies ranked by carbon efficiency. Each option shows predicted carbon emissions (kgCO2), savings percentage, total time, and a timeline preview across data centres — letting users make an informed trade-off between speed and sustainability.
 
-![Hi-fi wireframe — Deployment options with timeline previews](images/hifi-deployment-options.png)
+![Hi-fi wireframe — Deployment options with timeline previews](images/stats/hifi-deployment-options.png)
 /// caption
 Deployment options with timeline previews
 ///
@@ -131,7 +131,7 @@ We conducted a usability survey with 18 UCL Computer Science students to evaluat
 
 **SUS Score (Iteration 3): 79.2 / 100** — "Good" usability, a 35% improvement.
 
-![SUS scores across iterations](images/sus-scores.png)
+![SUS scores across iterations](images/stats/sus-scores.png)
 /// caption
 SUS scores across iterations
 ///
@@ -150,7 +150,7 @@ Our UI evolved through three major iterations, each informed by client meetings,
 
 The first iteration displayed scheduling results as simple **bar charts with green bars** (scheduled workload) **and grey bars** (existing workload). The calendar view used the same bar chart representation. There was no carbon intensity curve, no greenness indicator, no load curve, and no way to understand *why* jobs were scheduled at particular times. There was also no tab for viewing previous jobs.
 
-![Iteration 1 chart concept — green and grey bars only](images/iteration1-chart-concept.png)
+![Iteration 1 chart concept — green and grey bars only](images/stats/iteration1-chart-concept.png)
 /// caption
 Iteration 1 chart concept — green and grey bars only
 ///
@@ -181,7 +181,7 @@ Based on client feedback and TA guidance, we made three significant changes:
 
 3. **Added greenness line and load curve:** Our TA pointed out that users couldn't understand *why* the scheduler placed workloads at specific times. Since the scheduling algorithm depends on both the greenness of the grid (inverse of carbon intensity) and the current data centre load, we added both as overlay curves. The **greenness line** (dashed) shows when the grid is cleanest, and the **load curve** shows existing demand — together they explain the scheduler's decisions.
 
-![Iteration 2 chart concept — area curves with greenness and load](images/iteration2-chart-concept.png)
+![Iteration 2 chart concept — area curves with greenness and load](images/stats/iteration2-chart-concept.png)
 /// caption
 Iteration 2 chart concept — area curves with greenness and load
 ///
@@ -216,7 +216,7 @@ The final iteration incorporated feedback from our supervisor, Microsoft and NTT
 
 5. **Configurable prediction horizon:** Users can now set how far ahead the scheduler should predict and plan (the length of the forecast window), giving flexibility for both short urgent jobs and long-term batch scheduling.
 
-![Iteration 3 chart concept — carbon intensity with capacity-based load](images/iteration3-chart-concept.png)
+![Iteration 3 chart concept — carbon intensity with capacity-based load](images/stats/iteration3-chart-concept.png)
 /// caption
 Iteration 3 chart concept — carbon intensity with capacity-based load
 ///
