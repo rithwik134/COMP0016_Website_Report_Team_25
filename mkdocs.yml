@@ -62,7 +62,11 @@ markdown_extensions:
 
 plugins:
   - search
-  - mkdocs-video
+  - mkdocs-video:
+      css_style:
+        position: relative
+        width: "100%"
+        aspect-ratio: "16/9"
 
 extra_javascript:
   - javascripts/katex.js
