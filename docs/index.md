@@ -136,4 +136,4 @@
 
 ### Project Management
 
-<iframe src="gantt-chart.html" width="100%" height="600" style="border:none;"></iframe>
+<iframe src="gantt-chart.html" width="100%" height="620" style="border:none;"></iframe>
