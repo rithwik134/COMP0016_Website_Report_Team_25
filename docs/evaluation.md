@@ -127,7 +127,7 @@ To ensure a fair comparison, all tests were conducted under controlled condition
 *   **Fixed Resolution:** The discretization resolution was locked at **10,000** units. This ensures that the state-space size remains consistent across different workload volumes.
 *   **Statistical Stability:** Each data point represents the **average of 5 consecutive runs** to eliminate noise from OS context switching and background tasks.
 *   **Complexity Scaling:** We tested 40 distinct job requests, scaling the workload "length" to observe how the algorithm handles increasing computational pressure.
-
+* **Profiler Validation:** The benchmark metrics were explicitly designed to verify the resolution of hardware-level bottlenecks identified during initial `perf` profiling—specifically targeting L1 cache miss reductions and instructions-per-cycle (IPC) improvements in the DP hot-path.
 
 ### Comparative Performance Analysis
 
@@ -136,7 +136,7 @@ The primary metric for this evaluation is **Execution Time (seconds)**. As the s
 #### 1. Baseline vs. Cache Optimization
 The **First_Solution** (represented by the blue line in Figure 1) exhibited both high latency and significant variance, especially at lower complexity levels where execution times peaked near 16 seconds.
 
-By refactoring the data structures from an **Array of Structs (AoS)** to a **Struct of Arrays (SoA)**, the **Cache_Optimization** version (green line) achieved a more stable performance profile. While the raw speedup was modest (averaging ~10-20%), the primary benefit was the reduction in "jitter" or performance spikes, providing a more predictable latency for the scheduler.
+By refactoring the data structures from an **Array of Structs (AoS)** to a **Struct of Arrays (SoA)**, the **Cache_Optimization** version (green line) achieved a more stable performance profile. While the raw speedup was modest (up to 33%), the primary benefit was the reduction in "jitter" or performance spikes, providing a more predictable latency for the scheduler.
 
 #### 2. The Impact of SIMD Vectorization
 The most significant performance leap was achieved through manual **AVX-512 vectorization**. By processing 8 double-precision states simultaneously within the DP hot-path, the **Cache_and_Vectorization_Optimization** (orange line) drastically reduced execution time across the entire spectrum.
@@ -157,6 +157,23 @@ To understand the efficiency gains, we analyzed the **Speedup Factor** (Baseline
 #### 3. Peak Gains and Asymptotic Convergence
 *   **Peak Performance:** At lower complexity levels, the vectorized engine achieved a **4.0x speedup** over the baseline. This is where the overhead of the original scalar loops was most punitive.
 *   **Asymptotic Behavior:** As complexity increases, the speedup factor tends to converge toward a lower stable ratio (approx. 1.5x). This is an expected result of our **fixed resolution** methodology. Because the resolution is constant (10,000 units), as the total workload increases, the relative density of the DP transitions per unit of work changes. The algorithmic complexity is inversely proportional to the total workload; essentially, as the "workload" grows toward infinity, the fixed-size discretization grid becomes the dominant factor, causing the performance curves of different implementations to meet asymptotically.
+
+### Profiling the Optimized Engine
+
+To validate that the optimizations eliminated the overhead identified during [profiling of the baseline](implementation.md#profiling-and-bottleneck-identification), we re-profiled the final `Cache_and_Vectorization` build under the same conditions. The resulting flame graph confirms a fundamentally different execution profile:
+
+[**Open Interactive Flame Graph — After Optimization (Cache + AVX-512 SIMD)**](images/benchmarks/flamegraph_after.svg){ target="_blank" }
+*Hover over frames for sample counts and self-percentages; click to zoom into a subtree; Ctrl+F to search.*
+
+The contrast with the baseline flame graph is striking. Where the scalar baseline spent only **~42% of `calc_single` time on actual DP computation**, the optimized engine achieves **85.1% self-time** in `calc_single` — nearly all CPU cycles are now spent on useful SIMD-vectorized state transitions. The overhead categories that previously dominated the profile have been effectively eliminated:
+
+| Overhead source | Before | After | Change |
+|---|---|---|---|
+| `operator new` / `operator delete` | ~22% | <0.1% | Removed from hot-path; single `posix_memalign` pre-allocation |
+| `MemoEntry` struct copies | ~7% | 0% | Eliminated by SoA layout (contiguous scalar arrays) |
+| Vector reallocation (`_M_realloc_insert`) | ~7% | 0% | Eliminated by pre-allocated buffers |
+| Cost function hash lookups | ~6% | 0% | Replaced by precomputed lookup table |
+| **`calc_single` self (useful computation)** | **~42%** | **~85%** | SIMD vectorization + branchless logic |
 
 ### Conclusion on Execution Latency
 

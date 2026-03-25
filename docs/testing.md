@@ -4,19 +4,20 @@
 
 Our testing methodology follows a layered approach rooted in the **test pyramid** [1]: a broad base of fast, isolated unit tests, a middle tier of integration tests that verify component interactions, and a top layer of end-to-end and property-based tests that exercise the system as a whole. This structure ensures that defects are caught as early and as cheaply as possible, while still providing confidence that the integrated system behaves correctly.
 
-Every test is **deterministic and repeatable**. The Scheduler tests run under the Boost.Test framework with CMake/CTest, while the Stats service uses pytest. Both suites can be executed with a single command (`ctest` or `uv run pytest`) and require no manual setup beyond the standard build.
+Every test is **deterministic and repeatable**. The Scheduler tests run under the Boost.Test framework with CMake/CTest, the Stats service uses pytest, and the UI uses Playwright for end-to-end browser automation. Each suite can be executed with a single command (`ctest`, `uv run pytest`, or `npx playwright test`) and requires no manual setup beyond the standard build.
 
 To catch memory errors and concurrency bugs that conventional tests miss, we compile the Scheduler under multiple **sanitizer configurations**: AddressSanitizer + UndefinedBehaviorSanitizer for memory safety, and ThreadSanitizer for data-race detection — each via a dedicated CMake preset. On the Stats side, we use **Schemathesis** for property-based API fuzzing, automatically generating thousands of request combinations from the OpenAPI specification to surface edge cases that hand-written tests would never cover.
 
 The table below summarises the scope and tooling across both components:
 
-| Layer | Scheduler (C++) | Stats (Python) |
-|---|---|---|
-| **Unit** | Boost.Test — algorithm, deserialization, utilities, coroutines | pytest — ridge regression, DB CRUD, load predictor, data collectors |
-| **Integration** | Full HTTP lifecycle via Drogon test server + MockCalendar | FastAPI `TestClient` with isolated temp databases |
-| **Stress / Concurrency** | 30 000 concurrent coroutine requests; ThreadSanitizer preset | Background-loop resilience with mock sleep |
-| **Property-based / Fuzzing** | — | Schemathesis + Hypothesis state-machine workflows |
-| **Memory Safety** | ASan + UBSan CMake presets | — |
+| Layer | Scheduler (C++) | Stats (Python) | UI (Next.js / React) |
+|---|---|---|---|
+| **Unit** | Boost.Test — algorithm, deserialization, utilities, coroutines | pytest — ridge regression, DB CRUD, load predictor, data collectors | — |
+| **Integration** | Full HTTP lifecycle via Drogon test server + MockCalendar | FastAPI `TestClient` with isolated temp databases | — |
+| **End-to-End** | — | — | Playwright — 25 tests across 5 spec files (Chromium) |
+| **Stress / Concurrency** | 30 000 concurrent coroutine requests; ThreadSanitizer preset | Background-loop resilience with mock sleep | — |
+| **Property-based / Fuzzing** | — | Schemathesis + Hypothesis state-machine workflows | — |
+| **Memory Safety** | ASan + UBSan CMake presets | — | — |
 
 ---
 
@@ -309,8 +310,164 @@ This ensures that the contract between the two services — the JSON shapes, sta
 
 ---
 
+## UI End-to-End Testing (Playwright)
+
+The frontend is a Next.js/React application that serves as the primary user-facing interface for job submission, schedule visualisation, and data center governance. Because the UI orchestrates interactions across multiple backend services — form submissions trigger the C++ Scheduler, while calendar views consume Stats forecasts — defects at this layer directly impact the user experience. To ensure correctness across the full browser stack, we employ **Playwright** [3] for automated end-to-end testing against a live development server.
+
+### Test Infrastructure
+
+The test suite runs against a Chromium instance driven by Playwright, configured to target the Next.js development server on `localhost:3000`:
+
+```typescript
+// playwright.config.ts
+import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './tests',
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+    },
+  ],
+});
+```
+
+Each spec file targets a distinct page of the application, with `beforeEach` hooks navigating to the relevant route before every test. This ensures that each test starts from a clean page state, preventing inter-test coupling.
+
+### Test Coverage by Page
+
+The suite comprises **25 test cases** across **5 spec files**, organised by the UI workflow they exercise:
+
+| Spec File | Page | Tests | Focus |
+|---|---|---|---|
+| `config-and-governance.spec.ts` | `/config` | 6 | Data center toggle state, map interaction, persistence |
+| `scheduling-form.spec.ts` | `/` | 6 | Form inputs, validation, submission flow |
+| `results-fidelity.spec.ts` | `/schedule/{id}` | 5 | Result tabs, metric cards, chart interactivity |
+| `global-calendar.spec.ts` | `/workload-calendar` | 4 | Layer toggles, time reference, responsive layout |
+| `job-history.spec.ts` | `/scheduled-jobs` | 4 | Job listing, navigation, empty state handling |
+
+### Data Center Configuration & Map (`config-and-governance.spec.ts`)
+
+These tests verify the governance page where administrators enable or disable data centers. The page features a Leaflet map with markers for each DC and a list of toggle switches that must stay synchronised:
+
+```typescript
+test('Toggle DC and Verify Change State', async ({ page }) => {
+    const saveBtn = page.getByRole('button', { name: 'Save Configuration' });
+    await expect(saveBtn).toBeDisabled();
+    await page.getByRole('switch').first().click();
+    await expect(saveBtn).toBeEnabled();
+});
+
+test('Zero-Active State Error Visibility', async ({ page }) => {
+    const switches = await page.getByRole('switch', { checked: true }).all();
+    for (const s of switches) { await s.click(); }
+    await expect(
+        page.getByText(/at least one data centre must be active/i)
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Save Configuration' })
+    ).toBeDisabled();
+});
+```
+
+The suite validates:
+
+- **Toggle–Save coupling** — the Save button remains disabled until a change is made, preventing no-op submissions.
+- **Zero-active guard** — deactivating all data centers surfaces an error and disables saving, preventing the scheduler from receiving an empty location set.
+- **Map–List synchronisation** — clicking a Leaflet marker highlights the corresponding list entry, and hovering renders a tooltip with the DC name.
+- **Persistence handshake** — after saving, a confirmation toast ("Configuration saved") appears, verifying the round-trip to the Stats API.
+- **Navigation** — the Back button returns to the home page.
+
+### Scheduling Form (`scheduling-form.spec.ts`)
+
+The scheduling form is the primary entry point for users submitting AI workloads. These tests exercise the form's input controls, validation logic, and submission flow:
+
+```typescript
+test('GPU Count Numeric Boundary', async ({ page }) => {
+    await page.getByLabel('GPU Count').fill('999');
+    await expect(page.getByLabel('GPU Count')).toHaveValue('999');
+});
+
+test('Form Validation Alert', async ({ page }) => {
+    await page.getByLabel('GPU Count').fill('');
+    await page.getByRole('button', { name: 'Schedule Job' }).click();
+    await expect(page.locator('role=alert')).toBeVisible();
+});
+```
+
+The suite validates:
+
+- **Input state** — job type selection (`inference`/`batch`) updates the dropdown state; GPU count accepts large numeric values (boundary test at 999); preferred data center filter excludes the `none` sentinel.
+- **Submission feedback** — clicking "Schedule Job" renders a loading spinner (`.animate-spin`), providing immediate visual feedback while the C++ Scheduler computes the optimal path.
+- **Validation gates** — submitting with empty required fields surfaces a visible `role=alert` element, preventing malformed requests from reaching the backend.
+- **Post-submission navigation** — after a successful schedule computation, the browser navigates to `/schedule/{id}`, confirming the full form → scheduler → results pipeline.
+
+### Result Details & Analytics (`results-fidelity.spec.ts`)
+
+Once a schedule is computed, the results page presents the optimised allocation alongside comparative analytics. These tests verify the interactive visualisation layer:
+
+```typescript
+test('Toggle Unoptimised vs Optimised Tab', async ({ page }) => {
+    await page.goto('http://localhost:3000/schedule/test-id');
+    await page.getByRole('button', { name: 'Unoptimised' }).click();
+    await expect(
+        page.locator('button[data-state="active"]')
+    ).toContainText('Unoptimised');
+});
+
+test('Delete Confirmation Logic', async ({ page }) => {
+    await page.goto('http://localhost:3000/schedule/test-id');
+    await page.locator('.lucide-trash2').click();
+    await expect(page.getByRole('alertdialog')).toBeVisible();
+});
+```
+
+The suite validates:
+
+- **Comparison tabs** — toggling between "Optimised" and "Unoptimised" views updates the active tab state, allowing users to compare carbon impact.
+- **Metric card visibility** — key metrics ("Carbon Intensity", "Total Emissions") are rendered on page load.
+- **Data center drill-down** — clicking a DC-specific tab sets `aria-selected="true"`, enabling per-region analysis.
+- **Destructive action guard** — clicking the delete icon (trash) opens a confirmation `alertdialog` rather than immediately deleting, preventing accidental data loss.
+- **Chart interactivity** — hovering over a Recharts surface renders a tooltip wrapper, confirming that the time-series visualisation is interactive.
+
+### Global Workload Calendar (`global-calendar.spec.ts`)
+
+The calendar page provides a multi-day, multi-region view of scheduled workloads overlaid with forecast data. Tests verify the data-layer controls and layout responsiveness:
+
+- **Carbon-intensity layer** — toggling the "Carbon-Intensity" control renders exactly one Recharts line, confirming the overlay is activated.
+- **Capacity layer** — enabling the "Capacity" overlay increases the rendered line count to two, verifying independent layer composition.
+- **"Now" reference line** — a labelled reference line is always visible, anchoring the user's temporal context.
+- **Responsive scroll** — the chart container uses `overflow-x-auto`, ensuring horizontal scrolling on smaller viewports without layout breakage.
+
+### Historical Jobs & Navigation (`job-history.spec.ts`)
+
+The job history page lists all previously scheduled workloads with their carbon savings. Tests exercise the listing, navigation, and edge cases:
+
+```typescript
+test('Savings Badge Rendering', async ({ page }) => {
+    await expect(page.getByText(/% savings/i).first()).toBeVisible();
+});
+
+test('Job Card Click Navigation', async ({ page }) => {
+    await page.locator('.bg-card').first().click();
+    await expect(page).toHaveURL(/\/schedule\//);
+});
+```
+
+The suite validates:
+
+- **Savings badge** — each job card renders a "% savings" badge, making the carbon impact immediately visible in the listing.
+- **Card navigation** — clicking a job card navigates to its detailed result page (`/schedule/{id}`), confirming the router integration.
+- **Active tab highlighting** — the "Scheduled Jobs" navigation tab is visually highlighted (`bg-background`) when the page is active.
+- **Empty state resilience** — when no jobs exist, the page renders a "No scheduled jobs found" fallback message rather than an empty or broken layout.
+
+---
+
 ## References
 
 [1] M. Fowler, "TestPyramid," *martinfowler.com*, 2012. [Online]. Available: https://martinfowler.com/bliki/TestPyramid.html
 
 [2] D. Sverchkov, "Schemathesis: Property-based testing for API schemas," *GitHub*, 2023. [Online]. Available: https://github.com/schemathesis/schemathesis
+
+[3] Microsoft, "Playwright: Fast and reliable end-to-end testing for modern web apps," *GitHub*, 2024. [Online]. Available: https://github.com/microsoft/playwright
