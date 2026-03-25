@@ -1,88 +1,128 @@
 # Requirements
-
-idk what goes here tbf..?
-the brief the client gave us? well..:
-
 ---
+### Project Background
 
-Goal: Optimize the placement, scheduling, and execution of AI workloads across cloud and on-premise environments to minimize environmental impact. The framework evaluates energy use, carbon emissions, water consumption, and critical-materials wear, applying the Software Carbon Intensity (SCI) metric from the Green Software Foundation.
+AI workloads (e.g., training large models, inference services) are resource-intensive and often deployed without sustainability considerations. As AI demand is rapidly rising, it becomes increasingly important we prioritise reducing carbon emissions for sustainable development of AI technologies. NTTData, as a Green Software Foundation (GSF) Steering Member, has been working towards providing a trusted ecosystem of people, standard, and tools for delivering green software.
 
-1. Problem & Objectives
+As our client, NTTData assigned us the job of Investigating carbon‑aware scheduling within on‑premise and distributed datacentre environments. The aim is to make environmental performance a first‑class consideration in workload placement, using forecasted carbon‑intensity data and workload flexibility to shift execution toward cleaner periods and locations. By integrating prediction, scheduling, and impact reporting into a single system, the project provides a practical pathway for organisations to reduce emissions from AI operations without redesigning their existing pipelines.
 
-Problem. AI workloads (e.g., training large models, inference services) are resource-intensive and often deployed without sustainability considerations. Grid carbon intensity varies by region and time, data centers differ in PUE/WUE, and on-premise deployments can be underutilized. Optimizing across hybrid (cloud + on-prem) options is rarely done.
+### Project Goals
 
-Objectives.
+The overarching goal is to reduce the environmental impact of AI workloads by optimising when and where they run, while keeping the system realistic for real‑world deployment.
+More specifically, the framework aims to:
+- Minimise emissions by selecting execution windows and locations with lower carbon intensity.
+- Enable carbon‑aware decisions using both forecasted and historical grid‑intensity data.
+- Take advantage of workload flexibility by breaking parallelisable jobs into short, schedulable blocks.
+- Evaluate results using recognised green‑software metrics, including the Software Carbon Intensity (SCI) methodology.
+- Deliver an end‑to‑end system—covering prediction, scheduling, and results visualisation—that teams and organisations can adopt directly.
 
-    Minimize lifecycle impact per AI workload: CO₂e, kWh, water (L), and critical-materials wear using SCI.
-    Optimize across multi-cloud and on-premise clusters.
-    Respect SLOs (latency, throughput), budgets, and compliance/policy.
-    Provide explainable, auditable sustainability decisions.
+### Requirement Gathering
+We conducted a series of semi-structured interviews on potential users of the program to find the specific needs of our users.
 
-Non-functional. Pluggable data sources, low-latency decision-making, integration with AI platforms (MLflow, Kubeflow, PyTorch, TensorFlow), strong observability.
+=== "Autonomous Agent Developer"
+	**Question:** Would you say the disaster drone algorithms are built with sustainability in mind?<br>
+	**Answer:** No, usually the primary focus has always been on speed and reliability because these drones are used in life-saving situations like disaster response. Sustainability tends to take a back seat when performance is critical.
 
-1. Key Concepts & Data Inputs
+	**Question:** What challenges do you face in achieving sustainable practices while working on disaster drones?<br>
+	**Answer:** Sustainability isn’t always a priority in fast-paced tech environments. Disaster scenarios need low-latency, high-GPU workloads, so balancing performance with environmental goals is tough. Plus, there aren’t many tools that make this easy.
 
-   Grid carbon intensity (real-time & forecast).
-   Facility efficiency: PUE/WUE for cloud + on-prem facilities.
-   On-prem telemetry: server power draw, cooling overhead, utilization.
-   SCI metric:
-   SCI = (Energy × Carbon Intensity) / Functional Unit
-   Functional Unit examples: per training epoch, per inference request, per GB processed.
-   Temporal flexibility: allowable scheduling shifts.
-   Hardware reuse: maximize existing on-prem clusters before provisioning new cloud capacity.
-   Resource right-sizing: GPUs/CPUs sized per workload.
-   Cost context: on-prem TCO + cloud rates.
-   Compliance: residency, sovereignty, and internal sustainability targets.
+	**Question:** If you could design the perfect solution, what would it look like?<br>
+	**Answer:** I’d like a platform that helps me deploy workloads efficiently while showing real-time sustainability metrics-like carbon intensity and energy use. It would be ideal if I could see the impact and make informed choices without slowing down operations.
 
-2. Scoring & Optimization Model
+	**Question:** How do you personally measure success when balancing performance and sustainability?<br>
+	**Answer:** For me, success means it operates like usual, like low latency for disaster response, while reducing energy consumption and carbon emissions as much as possible. Even small improvements matter. If I can deploy workloads that use fewer resources without compromising performance, that’s a win. I also look for transparency, having clear metrics on energy use and emissions helps me make informed decisions and track progress over time.
+=== "AI Researcher"
+    **Question:** What motivates you to focus on sustainability in AI? <br>
+    **Answer:** AI workloads are incredibly resource intensive, training large models can consume thousands of kilowatt hours. I believe we have a responsibility to make this process more efficient and environmentally conscious.
 
-Vector per candidate (cloud region or on-prem site):
+    **Question:** What challenges do you face in achieving this? <br>
+    **Answer:** The biggest challenge is the lack of standardised tools and benchmarks for sustainability. Most platforms prioritise speed and cost, not environmental impact. It’s hard to convince teams to adopt sustainability practices when they don’t see immediate benefits.
 
-    SCI_i (kgCO₂e per functional unit)
-    W_i (L water per functional unit)
-    M_i (critical-materials wear proxy)
-    K_i (cost), L_i (latency), P_i (policy risk)
+    **Question:** If you could design the perfect solution, what would it look like? <br>
+    **Answer:** I like the idea of an intelligent system that optimises workload placement across cloud and on-prem environments based on real time carbon intensity and resource efficiency. It should provide transparent metrics like the SCI scores you mentioned and allow me to make trade offs without sacrificing performance.
 
-Filters. Discard infeasible (policy violations, unavailable hardware, SLO breaches).
+    **Question:** Do you think the industry is moving toward sustainability? <br>
+    **Answer:** Slowly, yes. There’s growing awareness, but use is uneven. We need more tools that make sustainability easy and measurable, so it becomes a natural part of AI development rather than something optional.
 
-Objective. Minimize SCI, then water, then cost — configurable via lexicographic or weighted scalarization.
+### Personas
+Using the data collected, we created personas and scenarios for our target users.
 
-Example score:
-Score_i = wSCI·SCÎ_i + wW·Ŵ_i + wM·M̂_i + wK·K̂_i + wL·L̂_i – ReuseBonus_i
+![Persona 1, Tim Jackson. Junior Devops Technician of Autonomous Drones Company](images/persona-tim.png)
+/// caption
+Persona 1, Tim Jackson. Junior Devops Technician of Autonomous Drones Company
+///
+![Persona 2, Bob Lecun. AI Researcher and Developer](images/persona-bob.png)
+/// caption
+Persona 2, Bob Lecun. AI Researcher and Developer
+///
 
-Temporal optimization. Deferrable training jobs can shift across hours/days to align with clean-energy windows.
+Based on the surveys, personas, and early design discussions, our team identified several high-level requirements that shape the system:
 
-Hybrid optimization. Compare cloud vs on-prem cost and SCI to choose best placement.
+1. **Optimise placement across multiple premises**: Existing carbon-aware tools typically optimise when a workload runs, but assume it will always run in a single datacentre. To achieve deeper carbon reductions, the system should consider both time and location. Allowing workloads to move between premises enables the scheduler to take advantage of cleaner regions rather than relying on the variability of a single site. This also requires accounting for practical overheads, such as the startup cost of launching a job in a new datacentre.
+2. **Split workloads into smaller, schedulable blocks**: Many AI workloads are naturally parallelisable, which means they can be broken into smaller units without affecting correctness. By dividing jobs into short, discrete execution blocks, the scheduler gains far more flexibility to place work in low-carbon windows and distribute it across cleaner regions. This fine-grained structure is essential for achieving meaningful carbon savings rather than coarse, all-or-nothing shifts.
+3. **Provide a clear comparison against an unoptimised schedule**: Users need to understand the impact of carbon-aware scheduling in real, tangible terms. The system should therefore generate both an optimised schedule and a baseline schedule that prioritises speed alone. The UI should present these side-by-side, along with intuitive metrics showing the carbon saved, so users can easily interpret the benefits of the optimisation.
+4. **Ensure the system remains practical and deployable**: Carbon-aware scheduling must work within real operational constraints. The system should respect job deadlines, datacentre availability, and workload requirements, and it should integrate cleanly with existing pipelines. The goal is not to redesign how AI workloads are written, but to make smarter decisions about when and where they run.
+5. **Support transparent, standards-aligned reporting**: To make the results meaningful and comparable, the system should produce impact estimates aligned with recognised green-software metrics (e.g., SCI). This ensures that organisations can trust and reuse the outputs in their own sustainability reporting.
 
-1. Agent Responsibilities (Hybrid Focus)
+Further conclusions are drawn in the MoSCoW requirements at the bottom of the page.
 
-   Carbon & Energy Intelligence Agent. Considers cloud grid mix and on-prem facility power sources.
-   Capacity & Placement Agent. Checks cloud quotas and on-prem cluster utilization.
-   Optimizer Agent. Balances cloud elasticity with on-prem sustainability.
-   Feedback/Accounting Agent. Issues SCI per workload whether cloud-hosted or on-prem.
+### Use Cases
+The use case diagram below illustrates how different users interact with the carbon‑aware scheduling system. It highlights the core actions available to users, including submitting AI workloads, adjusting datacentre availability, and reviewing both optimised and baseline schedules. These interactions reflect the system’s goal of making carbon‑aware decision‑making accessible and intuitive. By combining workload submission, carbon‑intensity forecasting, and visual comparison tools, the platform supports a smooth end‑to‑end experience that helps users understand and reduce the environmental impact of their AI operations.
 
-2. Workload Contract (AI-specific)
+![Use Case Diagram for carbon-aware Scheduler](images/use-case-diagram.png)
+/// caption
+Use-Case Diagram for the program
+///
 
-   workload_id, type (training, inference, batch AI job)
-   functional_unit (epoch, request, GB)
-   resources (GPU/TPU/CPU, memory, storage)
-   temporal_flexibility (earliest_start, latest_finish)
-   policy (allowed providers/sites)
-   budget + objective_profile (weights)
 
-Outputs: placement decision (cloud region/on-prem site, timing, shape), expected SCI, water, cost, compliance proof.
 
-1. Worked SCI Examples
+### MoSCoW Requirements
+#### Functional Requirements
 
-Training (Cloud)
+| ID | Requirement | Priority |
+| --- | --- | --- |
+| 1 | Ability to schedule a workload using specified parameters (e.g. total workload, deadline). | Must Have |
+| 2 | Display information about emissions (e.g. total carbon emissions, SCI, electrical usage) after scheduling. | Must Have |
+| 3 | Ability to view previously scheduled workloads. | Must Have |
+| 4 | Ability to delete previously scheduled workloads. | Must Have |
+| 5 | Graphically display when and where a workload is scheduled to run. | Should Have |
+| 6 | Ability to view all workloads scheduled with the software simultaneously on a single graph. | Should Have |
+| 7 | Provide information about carbon intensity at different times and datacentres, so users can evaluate the optimality of the schedule themselves. | Should Have |
+| 8 | Provide the user with information about the maximum forecasting window. | Should Have |
+| 9 | Provide the user with the percentage of carbon saved compared to a trivial schedule. | Should Have |
+| 10 | Display maximum capacity and exogenous load at each datacentre, providing more insight to the user. | Could Have |
+| 11 | Workload description and configuration using hardware-specific information (GPU type, model size, number of GPUs, duration). | Could Have |
+| 12 | Allow modification of the available datacentre set to schedule on. | Could Have |
+| 13 | Map presenting the geographical location of datacentres. | Could Have |
+| 14 | Allow the user to visually compare a trivial schedule to the optimised schedule. | Could Have |
+| 15 | Ability to run actual workloads on datacentres. | Won’t Have |
+| 16 | Full IAM and compliance certification stack. | Won’t Have |
 
-    Energy: 4,000 kWh, Intensity 0.25 kg/kWh, Emissions = 1,000 kgCO₂e.
-    Functional unit: 20 epochs → SCI = 50 kg/epoch.
-    If deferred to cleaner grid (0.10 kg/kWh) → SCI = 20 kg/epoch.
+#### Non-Functional Requirements
 
-Inference (On-Prem)
-
-    1M requests/day, on-prem cluster draws 50 kWh/day, intensity 0.15 kg/kWh.
-    Emissions = 7.5 kg/day → SCI = 7.5 / 1,000,000 = 7.5×10⁻⁶ kg = 7.5 mg/request.
-    If moved to cloud with dirtier grid (0.40 kg/kWh) → SCI = 20 mg/request.
-    Optimizer favors on-prem in this scenario.
+| ID | Requirement | Priority |
+| --- | --- | --- |
+| 1 | The forecasting service must predict carbon intensity and load served for the defined prediction window. | Must Have |
+| 2 | The forecasting service must make predictions available for any time period within the prediction window. | Must Have |
+| 3 | The forecasting service must support a prediction window length of at least 2 days. | Must Have |
+| 4 | The scheduling engine must optimise workloads constrained by user specifications (e.g. total workload in kWh). | Must Have |
+| 5 | The scheduling engine must account for both temporal and spatial optimisation. | Must Have |
+| 6 | The scheduling engine must be deterministic, producing reproducible results. | Must Have |
+| 7 | The forecasting service should fetch predicted and actual carbon intensity data from the Carbon Intensity API. | Should Have |
+| 8 | The forecasting service should support live fetching and provision of data. | Should Have |
+| 9 | The forecasting service should support a prediction window of at least 3 days. | Should Have |
+| 10 | The scheduling engine should support additional optimisation constraints (startup overhead, datacentre capacity, exogenous load). | Should Have |
+| 11 | The scheduling engine should calculate a trivial schedule for comparison. | Should Have |
+| 12 | The scheduling engine should persist schedules and trivial schedules to the database to allow later retrieval. | Should Have |
+| 13 | The forecasting service could support a prediction window of at least 7 days. | Could Have |
+| 14 | The forecasting service could provide historical carbon intensity data up to a year back with high efficiency. | Could Have |
+| 15 | The forecasting service could predict carbon intensity using a lightweight proprietary model. | Could Have |
+| 16 | The forecasting service could provide capacity data for each datacentre. | Could Have |
+| 17 | The forecasting service could support a prediction granularity of at least 5 minutes. | Could Have |
+| 18 | The scheduling engine could allow workloads to be described using hardware specifics (GPU type, number of GPUs, workload duration, model size). | Could Have |
+| 19 | The scheduling engine could improve algorithm efficiency to allow for quick schedule computation. | Could Have |
+| 20 | The scheduling engine could ensure high and easy scalability with hardware (number of threads, vCPUs). | Could Have |
+| 21 | The forecasting service will not support predictions for locations outside the United Kingdom. | Won’t Have |
+| 22 | The forecasting service will not support a prediction window longer than 7 days. | Won’t Have |
+| 23 | The scheduling engine will not execute actual workloads on datacentres. | Won’t Have |
+| 24 | The scheduling engine will not support parallel computation of different scheduling requests. | Won’t Have |
