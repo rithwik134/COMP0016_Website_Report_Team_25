@@ -160,7 +160,7 @@ To understand the efficiency gains, we analyzed the **Speedup Factor** (Baseline
 
 ### Profiling the Optimized Engine
 
-To validate that the optimizations eliminated the overhead identified during [profiling of the baseline](implementation.md#profiling-the-baseline), we re-profiled the final `Cache_and_Vectorization` build under the same conditions. The resulting flame graph confirms a fundamentally different execution profile:
+To validate that the optimizations eliminated the overhead identified during [profiling of the baseline](implementation.md#profiling-and-bottleneck-identification), we re-profiled the final `Cache_and_Vectorization` build under the same conditions. The resulting flame graph confirms a fundamentally different execution profile:
 
 [**Open Interactive Flame Graph — After Optimization (Cache + AVX-512 SIMD)**](images/benchmarks/flamegraph_after.svg){ target="_blank" }
 *Hover over frames for sample counts and self-percentages; click to zoom into a subtree; Ctrl+F to search.*
