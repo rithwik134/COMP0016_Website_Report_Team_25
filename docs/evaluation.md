@@ -1,16 +1,62 @@
 # Evaluation
 
-so maks' stuff is very useful here
+## MoSCoW Achievement Summary
 
-also:
+### Functional Requirements
 
-- performance benchmarking
-- client feedback (quotes)
-- supervisor feedback
-- ta feedback
-- our own analysis of what can be improved
-  - time to bring out segment tree matmul dp transition
+| ID | Requirement | Priority | Status |
+| --- | --- | --- | --- |
+| 1 | Ability to schedule a workload using specified parameters (e.g. total workload, deadline). | Must Have | Achieved |
+| 2 | Display information about emissions (e.g. total carbon emissions, SCI, electrical usage) after scheduling. | Must Have | Achieved |
+| 3 | Ability to view previously scheduled workloads. | Must Have | Achieved |
+| 4 | Ability to delete previously scheduled workloads. | Must Have | Achieved |
+| 5 | Graphically display when and where a workload is scheduled to run. | Should Have | Achieved |
+| 6 | Ability to view all workloads scheduled with the software simultaneously on a single graph. | Should Have | Achieved |
+| 7 | Provide information about carbon intensity at different times and datacentres, so users can evaluate the optimality of the schedule themselves. | Should Have | Achieved |
+| 8 | Provide the user with information about the maximum forecasting window. | Should Have | Achieved |
+| 9 | Provide the user with the percentage of carbon saved compared to a trivial schedule. | Should Have | Achieved |
+| 10 | Display maximum capacity and exogenous load at each datacentre, providing more insight to the user. | Could Have | Achieved |
+| 11 | Workload description and configuration using hardware-specific information (GPU type, model size, number of GPUs, duration). | Could Have | Achieved |
+| 12 | Allow modification of the available datacentre set to schedule on. | Could Have | Achieved |
+| 13 | Map presenting the geographical location of datacentres. | Could Have | Achieved |
+| 14 | Allow the user to visually compare a trivial schedule to the optimised schedule. | Could Have | Achieved |
+| 15 | Ability to run actual workloads on datacentres. | Won't Have | Not implemented |
+| 16 | Full IAM and compliance certification stack. | Won't Have | Not implemented |
 
+All Must Have, Should Have, and Could Have functional requirements were delivered. The two Won't Have items were intentionally excluded as agreed with the client.
+
+### Non-Functional Requirements
+
+| ID | Requirement | Priority | Status |
+| --- | --- | --- | --- |
+| 1 | The forecasting service must predict carbon intensity and load served for the defined prediction window. | Must Have | Achieved |
+| 2 | The forecasting service must make predictions available for any time period within the prediction window. | Must Have | Achieved |
+| 3 | The forecasting service must support a prediction window length of at least 2 days. | Must Have | Achieved (7 days) |
+| 4 | The scheduling engine must optimise workloads constrained by user specifications (e.g. total workload in kWh). | Must Have | Achieved |
+| 5 | The scheduling engine must account for both temporal and spatial optimisation. | Must Have | Achieved |
+| 6 | The scheduling engine must be deterministic, producing reproducible results. | Must Have | Achieved |
+| 7 | The forecasting service should fetch predicted and actual carbon intensity data from the Carbon Intensity API. | Should Have | Achieved |
+| 8 | The forecasting service should support live fetching and provision of data. | Should Have | Achieved |
+| 9 | The forecasting service should support a prediction window of at least 3 days. | Should Have | Achieved (7 days) |
+| 10 | The scheduling engine should support additional optimisation constraints (startup overhead, datacentre capacity, exogenous load). | Should Have | Achieved |
+| 11 | The scheduling engine should calculate a trivial schedule for comparison. | Should Have | Achieved |
+| 12 | The scheduling engine should persist schedules and trivial schedules to the database to allow later retrieval. | Should Have | Achieved |
+| 13 | The forecasting service could support a prediction window of at least 7 days. | Could Have | Achieved |
+| 14 | The forecasting service could provide historical carbon intensity data up to a year back with high efficiency. | Could Have | Achieved |
+| 15 | The forecasting service could predict carbon intensity using a lightweight proprietary model. | Could Have | Achieved |
+| 16 | The forecasting service could provide capacity data for each datacentre. | Could Have | Achieved |
+| 17 | The forecasting service could support a prediction granularity of at least 5 minutes. | Could Have | Achieved |
+| 18 | The scheduling engine could allow workloads to be described using hardware specifics (GPU type, number of GPUs, workload duration, model size). | Could Have | Achieved |
+| 19 | The scheduling engine could improve algorithm efficiency to allow for quick schedule computation. | Could Have | Achieved |
+| 20 | The scheduling engine could ensure high and easy scalability with hardware (number of threads, vCPUs). | Could Have | Achieved |
+| 21 | The forecasting service will not support predictions for locations outside the United Kingdom. | Won't Have | Not implemented |
+| 22 | The forecasting service will not support a prediction window longer than 7 days. | Won't Have | Not implemented |
+| 23 | The scheduling engine will not execute actual workloads on datacentres. | Won't Have | Not implemented |
+| 24 | The scheduling engine will not support parallel computation of different scheduling requests. | Won't Have | Not implemented |
+
+**100% of Must Have, Should Have, and Could Have non-functional requirements were achieved.** The forecasting service exceeded the minimum prediction window (7 days vs. the 2-day Must Have), operates at 5-minute granularity, and retrains a lightweight proprietary model every 30 minutes. The scheduling engine supports full spatio-temporal optimisation with sub-second computation via AVX-512 SIMD vectorisation and scales efficiently with hardware through its lock-free coroutine architecture. The four Won't Have items were intentionally excluded as agreed with the client.
+
+---
 
 ## Algorithmic Carbon Optimization: A Comparative Analysis of Deterministic DP Scheduling vs. GSF SDK
 
@@ -307,4 +353,30 @@ disproportionately influence the learned coefficients.
    sustained high carbon intensity that exceeds the model's training
    distribution. These events are rare in the training set but have outsized
    scheduling impact because they represent the worst-case carbon windows.
+
+---
+
+## Known Bugs
+
+There are no known bugs in the system at the time of submission.
+
+---
+
+## Individual Contribution Table — System
+
+| Team Member | Contribution | Percentage |
+| --- | --- | --- |
+| Ken | | % |
+| Maks | | % |
+| Ali | | % |
+| Rithwik | | % |
+
+## Individual Contribution Table — Website Report
+
+| Team Member | Contribution | Percentage |
+| --- | --- | --- |
+| Ken | | % |
+| Maks | | % |
+| Ali | | % |
+| Rithwik | | % |
 
