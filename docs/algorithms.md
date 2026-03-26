@@ -180,4 +180,4 @@ The Direct-XGBoost forecasting model achieved a 10.6% improvement in MAE, provid
 Performance improvement at different forecast horizons after weather integration.
 ///
 
-For a detailed breakdown of the forecasting model's development and evaluation, see the [Implementation](implementation.md), [Research — Forecasting Model Research](research.md#forecasting-model-research), and [ML Development Journal](dev-journal.md) pages.
+For a detailed breakdown of the forecasting model's development and evaluation, see the [Implementation](implementation.md), [Research — Forecasting Model Research](research.md#forecasting-model-research), and [AI Research Journal](dev-journal.md) pages.

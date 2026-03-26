@@ -78,7 +78,7 @@ When `convertRawJobRequest` is called, it returns:
 
 ## Forecasting Model Research
 
-This section presents the research behind our choice of production forecasting model for the Stats service. The forecasting system predicts carbon intensity (gCO2/kWh) for 5 UK regions, 7 days into the future at 30-minute intervals (336 steps per region per cycle). Through systematic experimentation across 18+ model architectures and 5 phases of refinement, we arrived at **RidgeFull** -- an enhanced Ridge regression model achieving MAE 24.88. For the full development narrative, see the [ML Development Journal](dev-journal.md). For detailed experimental data, see the [Experiment Report](appendices.md#forecasting-experiment-report) in the Appendices.
+This section presents the research behind our choice of production forecasting model for the Stats service. The forecasting system predicts carbon intensity (gCO2/kWh) for 5 UK regions, 7 days into the future at 30-minute intervals (336 steps per region per cycle). Through systematic experimentation across 18+ model architectures and 5 phases of refinement, we arrived at **RidgeFull** -- an enhanced Ridge regression model achieving MAE 24.88. For detailed experimental data, see the [AI Research Journal](dev-journal.md).
 
 ### 2.1 Key Concepts and Terminology
 

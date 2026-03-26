@@ -182,7 +182,7 @@ The transition from a naive scalar implementation to a cache-aware, SIMD-acceler
 
 ## Critical Evaluation of the Forecasting Model
 
-An evaluation of the RidgeFull production model (MAE 24.88), the forecasting engine behind the Stats service. For context on terminology (lag features, Fourier harmonics, direct vs recursive forecasting, origin statistics, etc.), see the [Research — Forecasting Model Research](research.md#forecasting-model-research) page. For the full experimental history, see the [ML Development Journal](dev-journal.md) and [Experiment Report](appendices.md#forecasting-experiment-report).
+An evaluation of the RidgeFull production model (MAE 24.88), the forecasting engine behind the Stats service. For context on terminology (lag features, Fourier harmonics, direct vs recursive forecasting, origin statistics, etc.), see the [Research — Forecasting Model Research](research.md#forecasting-model-research) page. For the full experimental history, see the [AI Research Journal](dev-journal.md).
 
 ### What the Model Does Well
 
