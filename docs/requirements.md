@@ -47,11 +47,11 @@ We conducted a series of semi-structured interviews on potential users of the pr
 ### Personas
 Using the data collected, we created personas and scenarios for our target users.
 
-![Persona 1, Tim Jackson. Junior Devops Technician of Autonomous Drones Company](images/persona-tim.png)
+![Persona 1, Tim Jackson. Junior Devops Technician of Autonomous Drones Company](images/stats/persona-tim.png)
 /// caption
 Persona 1, Tim Jackson. Junior Devops Technician of Autonomous Drones Company
 ///
-![Persona 2, Bob Lecun. AI Researcher and Developer](images/persona-bob.png)
+![Persona 2, Bob Lecun. AI Researcher and Developer](images/stats/persona-bob.png)
 /// caption
 Persona 2, Bob Lecun. AI Researcher and Developer
 ///
@@ -74,6 +74,110 @@ The use case diagram below illustrates how different users interact with the car
 Use-Case Diagram for the program
 ///
 
+Below, you can see a list of use cases for our program:
+
+| ID | Use Case |
+| --- | --- |
+| UC1 | Open Scheduling Form |
+| UC2 | Submit Job for Scheduling |
+| UC3 | View Global Workload |
+| UC4 | View Previous Jobs |
+| UC5 | Select Previous Job |
+| UC6 | View Schedule Result |
+| UC7 | Compare Optimised vs Unoptimised |
+| UC8 | Cancel Scheduled Job |
+| UC9 | Configure Datacenters |
+
+#### Use Case Descriptions
+|  | **Use Case** |
+| --- | --- |
+| ID | UC1 |
+| Actor | User |
+| Description | User opens the scheduling form |
+| Preconditions | User loads into the site or navigates to page via top navigation bar |
+| Main Flow | 1. User clicks on "Scheduling Form" tab in the top navigation.  <br>2. System displays the scheduling form with input fields (job type, GPU type, GPU count, model size, time window, preferred datacenter).  <br>3. Form is ready for user input. |
+| Result | User is presented with an empty scheduling form |
+| Alternative Flows | None |
+
+|  | **Use Case** |
+| --- | --- |
+| ID | UC2 |
+| Actor | User |
+| Description | User submits a job for scheduling |
+| Preconditions | User has opened the scheduling form and filled in all required fields (GPU count > 0, model size > 0, time window specified, within forecast range) |
+| Main Flow | 1. User enters job parameters (job type, GPU type, GPU count, model size, estimated runtime, scheduling window, optional datacenter preference).<br>2. System validates all inputs.<br>3. User clicks "Submit" button.<br>4. System sends request to `/api/schedules` endpoint.<br>5. Scheduler optimizes job placement across datacenters using carbon-aware algorithm.<br>6. System receives optimized schedule result with schedule ID and impact metrics.<br>7. UC2 completes; system transitions to UC6 (View Schedule Result). |
+| Result | Job is submitted and schedule ID is generated. User is redirected to schedule result view. |
+| Alternative Flows | - **Validation Error:** If any required field is invalid or missing, system displays error message and remains on form. <br>- **Service Unavailable:** If scheduler service is unreachable, system displays error message and allows retry.<br>- **Outside Forecast Range:** If latest finish time exceeds available carbon forecast window, system displays warning and rejects submission. |
+
+|  | **Use Case** |
+| --- | --- |
+| ID | UC3 |
+| Actor | User |
+| Description | User view global workload page |
+| Preconditions | User navigates to "Global Workload" tab using top navigation bar |
+| Main Flow | 1. User clicks on "Global Workload" tab in the top navigation.<br>2. System fetches all scheduled jobs across all active datacenters.<br>3. System displays interactive workload calendar with one row per datacenter.<br>4. Each row shows scheduled jobs, carbon intensity (red line), capacity (purple line), and current time marker.<br>5. User can scroll horizontally to view time range. |
+| Result | Global workload view is displayed with real-time data aggregation. |
+| Alternative Flows | - **No Data Available:** If no scheduled jobs exist, system displays "No scheduled blocks found" message.<br>- **Forecast Unavailable:** If carbon forecast cannot be retrieved, charts still display workload but without carbon intensity overlay. |
+
+|  | **Use Case** |
+| --- | --- |
+| ID | UC4 |
+| Actor | User |
+| Description | User opens the page to view previous jobs |
+| Preconditions | User navigates to "Scheduled Jobs" tab via top navigation bar |
+| Main Flow | 1. User clicks on "Scheduled Jobs" tab in the top navigation.<br>2. System fetches all previous job summaries from `/api/schedules/summary`.<br>3. System displays list of jobs sorted by most recent first.<br>4. For each job, system shows: schedule ID, start/end time, datacenters used, total load (PFLO), emissions (kg CO₂), and savings % (if optimized vs unoptimized).<br>5. Each job entry is clickable.<br>6. User selects a job to view details (proceeds to UC5). |
+| Result | List of previous jobs is displayed in scrollable card format. |
+| Alternative Flows | - **No Previous Jobs:** If no jobs exist, system displays "No previous jobs found" message with option to schedule new job.<br>- **Load Error:** If job summary fetch fails, system displays error message. |
+
+|  | **Use Case** |
+| --- | --- |
+| ID | UC5 |
+| Actor | User |
+| Description | User selects a previous job to view full schedule details |
+| Preconditions | User has opened the "Scheduled Jobs" list (UC4) and is viewing previous jobs |
+| Main Flow | 1. User clicks on a job card in the previous jobs list.<br>2. System fetches full schedule details for the selected job from `/api/schedules/{schedule_id}`.<br>3. System also fetches unoptimised (trivial) schedule from `/api/schedules/{schedule_id}/trivial`.<br>4. System transitions to UC6 (View Schedule Result) with the selected job data. |
+| Result | Schedule result view is displayed for the selected previous job. |
+| Alternative Flows | - **Job Not Found:** If schedule ID is invalid, system displays error message.<br>- **Trivial Schedule Unavailable:** If unoptimised schedule cannot be fetched, system continues without comparison data. |
+
+|  | **Use Case** |
+| --- | --- |
+| ID | UC6 |
+| Actor | User |
+| Description | User views schedule result details and visualisations |
+| Preconditions | Job schedule has been submitted (UC2) or previous job has been selected (UC5) |
+| Main Flow | 1. System displays schedule result page with: schedule ID; environmental impact metrics (carbon intensity g CO₂/kWh, total emissions kg CO₂, SCI per unit); and data centre workload distribution chart.<br>2. Chart shows time-series workload across selected datacentre with existing load (gray area), new job load (green area for optimised, orange for unoptimised), carbon intensity line (red), capacity line (purple), and current time marker (amber).<br>3. User can switch between datacentres via tabs.<br>4. User can access UC7, UC8, or UC9 from this view. |
+| Result | Schedule result is fully displayed with all metrics and visualisations loaded. |
+| Alternative Flows | - **Data Load Error:** If schedule blocks cannot be fetched, system displays partial results with available data.<br>- **Forecast Unavailable:** Chart displays workload without carbon intensity overlay. |
+
+|  | **Use Case** |
+| --- | --- |
+| ID | UC7 |
+| Actor | User |
+| Description | User compares optimised and unoptimised schedules |
+| Preconditions | User is viewing UC6 (View Schedule Result) and unoptimised schedule data is available |
+| Main Flow | 1. System displays comparison toggle buttons: "Optimised" and "Unoptimised" in the environmental impact card.<br>2. User clicks "Unoptimised" button.<br>3. System switches view to show unoptimised (trivial) schedule metrics and workload.<br>4. System updates impact card background colour (orange tint for unoptimised), chart data (orange areas instead of green), and comparison savings percentages (displayed as badges showing % improvement).<br>5. User can toggle back to "Optimised" to see original optimised schedule. |
+| Result | Schedule result view displays toggled data with updated visualisations and savings indicators. |
+| Alternative Flows | - **Unoptimised Unavailable:** If trivial schedule was not computed, toggle buttons are not displayed. |
+
+|  | **Use Case** |
+| --- | --- |
+| ID | UC8 |
+| Actor | User |
+| Description | User cancels a scheduled job |
+| Preconditions | User is viewing UC6 (View Schedule Result) and has a scheduled job to cancel |
+| Main Flow | 1. User clicks "Cancel Job" button on the schedule result page.<br>2. System displays confirmation dialog with message: "This will remove the job (ID: {schedule_id}) from the schedule."<br>3. User confirms cancellation.<br>4. System sends DELETE request to `/api/schedules/{schedule_id}`.<br>5. System removes job from database.<br>6. System navigates to "Scheduled Jobs" page or home page. |
+| Result | Job is removed from scheduler queue and database. User is redirected to previous page. |
+| Alternative Flows | - **Cancellation Rejected:** If job is already in execution state, system displays error "Cannot cancel job in progress."<br>- **Database Error:** If deletion fails, system displays error message but allows user to retry or navigate away. |
+
+|  | **Use Case** |
+| --- | --- |
+| ID | UC9 |
+| Actor | User |
+| Description | User configures which datacentres are available for scheduling |
+| Preconditions | User presses config button in scheduling form |
+| Main Flow | 1. User clicks "Config" in scheduling form.<br>2. Configure Datacentre page is displayed.<br>3. User can enable/disable datacentres used in scheduling.<br>4. User presses save configuration to let the system know which datacentres are in use. |
+| Result | User can modify which datacentres can run their job. |
+| Alternative Flows | - **Datacentres cannot be fetched:** Text is displayed that datacentres cannot be fetched from stats component and items are not rendered. System still allows the user to return back to the scheduling form. |
 
 
 ### MoSCoW Requirements
