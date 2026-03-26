@@ -89,6 +89,58 @@ The user can view all previous jobs through this page. It gives a quick summary 
 
 ## Legal Issues and Processes
 
+#### GDPR Compliance
+
+The Carbon-Aware AI Workload Scheduler is designed with privacy in mind and adheres to the principles of the UK General Data Protection Regulation (UK GDPR). The system does not collect, store, or process any personal identifiable information (PII). Specifically:
+
+- **No user authentication or accounts**: The UI allows job submission without login, registration, or any form of user identification.
+- **No personal data collection**: Job configurations submitted through the interface contain only technical parameters (workload type, deadline, duration) — no personal data is attached or required.
+- **Public data sources only**: The Stats forecasting service consumes data exclusively from public APIs — the [UK Carbon Intensity API](https://carbonintensity.org.uk/) and [Open-Meteo weather API](https://open-meteo.com/) — neither of which involves personal data.
+- **No cookies or tracking**: The website and UI do not use cookies, analytics, or any client-side tracking mechanisms.
+- **Session-only processing**: Job submissions are processed in-memory by the Scheduler and are not persisted beyond the user's session. No database of user activity exists.
+
+Since the system does not handle personal data at any point in its pipeline, the six GDPR principles are addressed as follows:
+
+| GDPR Principle | How It Is Addressed |
+| --- | --- |
+| **Lawfulness, Fairness, and Transparency** | Users are informed of the system's purpose. No personal data is collected or processed. |
+| **Purpose Limitation** | Data consumed (carbon intensity, weather) is used solely for scheduling optimisation. |
+| **Data Minimisation** | Only the minimum technical parameters required for scheduling are accepted as input. |
+| **Storage Limitation** | No user data is persisted. Job configurations exist only in-memory during processing. |
+| **Integrity and Confidentiality** | All inter-service communication occurs over HTTP between co-located containers. No sensitive data is transmitted. |
+| **Accountability** | The source code is publicly available under the MIT License for inspection and audit. |
+
+#### Privacy Statement
+
+The Carbon-Aware AI Workload Scheduler does not collect, store, or share any personal data. No information is transmitted to third parties beyond the public API calls required for carbon intensity and weather data retrieval — these calls contain no user-identifying information.
+
+The third-party services used by the system are:
+
+- **UK Carbon Intensity API** — A free, public API provided by National Grid ESO. No API key or user data is required.
+- **Open-Meteo Weather API** — A free, open-source weather API. Requests contain only geographic coordinates and weather parameters.
+
+We reserve the right to update this privacy statement. Any changes will be reflected on this page.
+
+#### Source Code License
+
+The Carbon-Aware AI Workload Scheduler is released under the **MIT License**:
+
+> MIT License
+>
+> Copyright (c) 2025 Yiqian (akioweh) Liu, Maksymilian (Maksiu) Sieklinski, Ali Raza (arjafree) Jafree, and Rithwik (rithwik134) Chokka
+>
+> Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files, to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, subject to the conditions of the MIT License.
+
+The full license text is available in the [project repository](https://github.com/akioweh/carbon-aware-ai-agents).
+
+#### Terms of Use
+
+- **No Warranty**: The software is provided "as is", without warranty of any kind, express or implied. The authors are not liable for any damages arising from the use of the software.
+- **Limitation of Liability**: In no event shall the authors or copyright holders be liable for any claim, damages, or other liability arising from the use of the software.
+- **Governing Law**: This project was developed as part of the UCL COMP0016 Systems Engineering module. Any legal inquiries should be directed through UCL.
+
+*Last updated: March 2026*
+
 ## Development Blog
 
 ## Monthly Video

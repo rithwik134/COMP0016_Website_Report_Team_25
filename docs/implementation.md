@@ -2,6 +2,23 @@
 
 This page details how the key features of the Carbon-Aware AI Agent were implemented, focusing on the technical translation from user requirements to algorithmic execution.
 
+## UI-Backend Orchestration
+
+The user interface facilitates this hardware-aware scheduling through a specialized form that guides users to provide valid infrastructure specifications. For a broader overview of the microservice architecture and component interactions that support this orchestration, see the [System Design](system-design.md) page.
+
+### The Commitment–Cancel Workflow
+
+To ensure consistency in a shared scheduling environment, the system employs a two-phase commitment flow:
+
+1. **Phase 1**: Upon form submission, the scheduler computes the optimal path, **immediately persists it** to the database to "reserve" the capacity, and returns the result.
+2. **Phase 2**: The user reviews the optimized schedule. If they reject it, a `DELETE` request is sent to release the reserved capacity.
+
+### Natural Units in the UI
+
+The UI (`SchedulingForm.tsx`) allows users to select from a predefined library of industry-standard GPUs. This ensures that the parameters sent to the backend are backed by verified hardware constants (TDP, TFLOPS), maintaining the integrity of the carbon intensity calculations.
+
+---
+
 ## Hardware-Aware Workload Translation
 
 A major challenge in carbon-aware scheduling is bridging the gap between an AI engineer's operational needs (e.g., "I need to train this 70B model for 10 hours on 8x A100s") and the scheduler's mathematical optimization engine.
@@ -42,20 +59,45 @@ The scheduler's core optimization loop minimizes a cost function that is physica
 
 By multiplying the workload (FLO) by the hardware's energy efficiency (kWh/FLO) and the regional carbon intensity (gCO2/kWh), the algorithm ensures that every scheduling decision is directly optimized for the lowest possible greenhouse gas impact.
 
-## UI-Backend Orchestration
+---
 
-The user interface facilitates this hardware-aware scheduling through a specialized form that guides users to provide valid infrastructure specifications. For a broader overview of the microservice architecture and component interactions that support this orchestration, see the [System Design](system-design.md) page.
+## Web API & Drogon Framework Integration
 
-### The Commitment–Cancel Workflow
+To expose the high-performance C++ scheduling engine as a RESTful web service without introducing cross-language latency penalties, the backend is built on **Drogon**, a C++14/20 asynchronous web framework. Drogon’s non-blocking, event-driven architecture pairs perfectly with our heavy use of C++20 coroutines, ensuring that the HTTP event loop remains responsive even when processing intensive DP calculations or fetching remote API data.
 
-To ensure consistency in a shared scheduling environment, the system employs a two-phase commitment flow:
+### Coroutine-Based Controllers
+API endpoints are defined using `drogon::HttpController`. By utilizing routing macros (e.g., `ADD_METHOD_TO`), HTTP verbs and paths are mapped directly to class methods. Crucially, every handler returns a `drogon::Task<drogon::HttpResponsePtr>`, executing entirely as a coroutine. This guarantees that when a controller needs to interact with the database or the `SchedulingQueue`, it uses `co_await` to yield execution back to the Drogon thread pool, preventing thread starvation.
 
-1. **Phase 1**: Upon form submission, the scheduler computes the optimal path, **immediately persists it** to the database to "reserve" the capacity, and returns the result.
-2. **Phase 2**: The user reviews the optimized schedule. If they reject it, a `DELETE` request is sent to release the reserved capacity.
 
-### Natural Units in the UI
 
-The UI (`SchedulingForm.tsx`) allows users to select from a predefined library of industry-standard GPUs. This ensures that the parameters sent to the backend are backed by verified hardware constants (TDP, TFLOPS), maintaining the integrity of the carbon intensity calculations.
+
+### Request Deserialization & Centralized Error Handling
+
+To maintain strict type safety and separate HTTP parsing from core business logic, we heavily utilize Drogon’s `fromRequest<T>` template specialization. When an endpoint expects a payload, Drogon automatically calls our custom specialization to unpack the `HttpRequest`. For example, `fromRequest<scheduler::JobRequest>` parses the incoming JSON body, validates ISO-8601 timestamps, checks logical constraints (e.g., `latest_finish` must be after `earliest_start`), and performs the initial hardware metric conversions. 
+
+If any constraint is violated during this step, or if an issue arises deeper in the scheduling engine, the system relies on a suite of domain-specific C++ exceptions (`ValidationException`, `SchedulingException`, and `NetworkException`). To keep the core algorithms decoupled from HTTP transport logic, we avoid scattering repetitive `try/catch` blocks across every API controller. Instead, we leverage Drogon’s application-wide exception interception mechanism.
+
+During server initialization, we override the framework's default behavior by injecting a custom lambda into `drogon::app().setExceptionHandler()`. When an exception bubbles up from deep within the coroutine stack, this centralized handler catches it, uses `dynamic_cast` to identify the specific domain error, and automatically maps it to the most semantically appropriate HTTP status code:
+
+*   **`ValidationException` $\rightarrow$ `422 Unprocessable Entity`**: Triggered during request deserialization if the payload is malformed or violates logical constraints (e.g., a time horizon in the past).
+*   **`SchedulingException` $\rightarrow$ `409 Conflict`**: Thrown when a request is perfectly formatted, but the physical system state cannot satisfy it (e.g., insufficient capacity, no available locations, or an infeasible workload constraint).
+*   **`NetworkException` $\rightarrow$ `503 Service Unavailable`**: Raised when the backend fails to connect to or fetch necessary predictions from the Python Forecasting API.
+
+For any recognized exception, the handler constructs a standardized JSON payload (`{"error": "<message>"}`) and safely returns it to the user. If an unexpected `std::exception` occurs, the logic gracefully falls back to Drogon's default handler, returning a `500 Internal Server Error` and preserving the application's overall stability.
+
+### The `Serializable` C++20 Concept
+Returning complex, nested data structures from controllers back to the UI requires serializing C++ domain objects into JSON. Writing manual boilerplate for every struct is error-prone. To solve this, we designed a generic, concept-driven serialization interface leveraging C++20.
+
+We define a custom `Serializable` concept that requires a type to have an `f_toJson` overload returning a `Json::Value`. By providing baseline overloads for primitive types (`std::integral`, `std::floating_point`), `std::string`, and standard library containers (`std::vector`, `std::map`, `std::optional`), the serialization process becomes recursive and automatic.
+
+```cpp
+template <typename T>
+concept Serializable = requires(const T &obj) {
+    { f_toJson(obj) } -> std::convertible_to<Json::Value>;
+};
+```
+
+To invoke this cleanly across the codebase, we implemented a custom niebloid (a function object similar to a Customization Point Object) named `toJson`. In the controllers, serializing a complex database response is as simple as calling `toJson(result)`.
 
 ---
 
@@ -90,7 +132,7 @@ The elegance of this lock-free architecture is best demonstrated by the dual sta
 Because the worker loop (`runTasks`) executes as a `drogon::Task<>` coroutine, it inherently supports asynchronous suspension. When the DP engine finishes and the system needs to persist the reservation to the database, the worker thread `co_await`s the I/O. The thread is immediately released back to the Drogon thread pool, ensuring that even under heavy serialization, the server's CPU threads are never held hostage by database latency.
 
 ### Future Parallelism
-While requests are currently serialized strictly to maintain global state integrity, the introduction of hardware power constraints opens the possibility of running non-conflicting schedules in parallel. This architectural evolution and its trade-offs are explored further in the [Possible Extensions](extensions.md) section.
+While requests are currently serialized strictly to maintain global state integrity, the introduction of hardware power constraints opens the possibility of running non-conflicting schedules in parallel. This architectural evolution and its trade-offs are explored further in the [Possible Extensions](possible-extensions.md#3-parallel-computation-of-schedules) section.
 
 ---
 
@@ -176,6 +218,38 @@ To illustrate how we resolve the suspension race condition without mutexes, here
 ```
 
 Creating this foundational infrastructure was technically demanding, but it fundamentally bridges the gap between our I/O needs and our compute engine. It guarantees that the worker thread safely parallelizes network requests, avoids deadlocks, and ensures the ultra-fast SIMD scheduler is fed with external API data as rapidly as the physical network allows.
+
+---
+
+## Database Communication & Coroutine ORM
+
+The system persists calculated schedules, data center capacity constraints, and carbon impacts into a **PostgreSQL** database. All database interactions are fully asynchronous and utilize Drogon's built-in Coroutine ORM alongside raw SQL queries for complex analytics.
+
+### Code-Generated Models & DTO Mapping
+To represent the database schema in C++, we use `drogon_ctl` to auto-generate ORM model classes (e.g., `JobModel`, `ImpactModel`, `TrivialJobModel`). However, to prevent these database-specific models—and their associated trantor time libraries—from leaking into the core scheduling logic, we implemented a strict Data Transfer Object (DTO) mapping layer.
+
+The `scheduler::mappers` namespace houses symmetric `f_toDto` and `f_fromDto` functions. Leveraging C++20 ranges (`std::views::transform`) and function objects (`ToDtoFn`, `FromDtoFn`), arrays of internal domain objects (like `ScheduleBlock`) are elegantly projected into Drogon ORM models right before persistence, and vice versa upon retrieval.
+
+### Transactional Integrity and High-Throughput Batching
+Persisting a completed schedule involves writing a parent summary (the carbon impact) and potentially thousands of individual 5-minute execution blocks across multiple data centers. To guarantee ACID properties without blocking the server’s main event loop, we utilize `newTransactionCoro()`.
+
+* **Asynchronous Batching**: For the high-resolution Blocks table, we utilize asynchronous batch inserts within the active transaction. By collapsing thousands of individual rows into a single multi-row SQL execution plan, we significantly reduce the overhead of the PostgreSQL query parser and eliminate the latency of multiple network round-trips. This ensures that even the most complex 7-day schedules are persisted with minimal I/O wait times.
+
+* **Type-Safe Persistence with CoroMapper**: Queries and inserts are executed using `drogon::orm::CoroMapper<T>`, instantiated with the asynchronous transaction context. The ORM facilitates type-safe interaction by combining `drogon::orm::Criteria` objects. For example, filtering historical schedules by a specific data center and time frame is achieved by logically chaining criteria (e.g., `CompareOperator::GE` for start times) and passing them into `mapper.findBy()`.
+
+* **Consistency**: The use of a unified transaction ensures that the relationship between a Job and its associated Impact and Block records remains atomic. If a database error occurs during a batch write, the entire operation is rolled back, preventing "orphaned" job summaries that lack corresponding execution data.
+
+```cpp
+auto fullCriteria = combineCriteria(
+    jobTimestampAfterStartCriteria(start),
+    jobTimestampBeforeEndCriteria(end),
+    specificDatacenterCriteria(datacenter)
+);
+auto models = co_await context.jobsMapper.findBy(fullCriteria);
+```
+
+### Raw Asynchronous SQL
+While the `CoroMapper` handles standard CRUD operations excellently, certain UI features—such as the dashboard's historical schedule summaries—require complex relational aggregations (e.g., `array_agg(DISTINCT j.location_id)`) that exceed the capabilities of the ORM. For these scenarios, the data access layer (in `Calendar.cpp`) falls back to `execSqlCoro`, executing raw SQL against the PostgreSQL instance asynchronously and mapping the generic result sets back into domain summaries.
 
 ---
 
