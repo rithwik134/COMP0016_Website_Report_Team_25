@@ -58,6 +58,32 @@ All Must Have, Should Have, and Could Have functional requirements were delivere
 
 ---
 
+## Known Bugs
+
+There are no known bugs in the system at the time of submission.
+
+---
+
+## Individual Contribution Table — System
+
+| Team Member | Contribution | Percentage |
+| --- | --- | --- |
+| Ken | | % |
+| Maks | | % |
+| Ali | | % |
+| Rithwik | | % |
+
+## Individual Contribution Table — Website Report
+
+| Team Member | Contribution | Percentage |
+| --- | --- | --- |
+| Ken | | % |
+| Maks | | % |
+| Ali | | % |
+| Rithwik | | % |
+
+---
+
 ## Algorithmic Carbon Optimization: A Comparative Analysis of Deterministic DP Scheduling vs. GSF SDK
 
 ### 1. Executive Summary
@@ -353,30 +379,3 @@ disproportionately influence the learned coefficients.
    sustained high carbon intensity that exceeds the model's training
    distribution. These events are rare in the training set but have outsized
    scheduling impact because they represent the worst-case carbon windows.
-
----
-
-## Known Bugs
-
-There are no known bugs in the system at the time of submission.
-
----
-
-## Individual Contribution Table — System
-
-| Team Member | Contribution | Percentage |
-| --- | --- | --- |
-| Ken | | % |
-| Maks | | % |
-| Ali | | % |
-| Rithwik | | % |
-
-## Individual Contribution Table — Website Report
-
-| Team Member | Contribution | Percentage |
-| --- | --- | --- |
-| Ken | | % |
-| Maks | | % |
-| Ali | | % |
-| Rithwik | | % |
-
