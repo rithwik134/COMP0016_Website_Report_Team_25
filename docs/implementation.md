@@ -181,11 +181,13 @@ Creating this foundational infrastructure was technically demanding, but it fund
 
 ## Forecasting Service (Stats Component)
 
-The Stats service is a **FastAPI** application in Python that continuously ingests carbon intensity data, trains a Ridge regression model per data center, and serves 7-day carbon intensity forecasts at 5-minute resolution to the C++ Scheduler via a REST API. For details on model selection and experimental comparison against alternative approaches, see the [Research — Forecasting Model Research](research.md#forecasting-model-research) page. The full development narrative is documented in the [ML Development Journal](dev-journal.md).
+The Stats service is a **FastAPI** application in Python, deployed on a dedicated **Oracle Cloud** instance, that continuously ingests carbon intensity data, trains a Ridge regression model per data center, and serves 7-day carbon intensity forecasts at 5-minute resolution to the C++ Scheduler via a REST API. For details on model selection and experimental comparison against alternative approaches, see the [Research — Forecasting Model Research](research.md#forecasting-model-research) page. The full development narrative is documented in the [ML Development Journal](dev-journal.md).
 
-### Service Architecture
+### Service Architecture {#deployment-performance-rationale}
 
 The service is structured around three background threads that operate on two SQLite databases, with an in-memory model cache sitting between the data layer and the API layer. A detailed architectural diagram of this pipeline is provided in [System Design — Stats Component](system-design.md#stats-component-internal-architecture).
+
+Deploying the Stats service on a separate Oracle Cloud instance prevents its heavy Python workloads — year-long time series processing, multi-million-row feature matrices during cold-start training — from bottlenecking the latency-sensitive C++ Scheduler. This separation keeps the Scheduler's host free for SIMD-optimised DP computation while the Stats service scales independently, communicating over HTTP as described in [System Design](system-design.md).
 
 ### External Data Sources & Sampling Interval
 
@@ -229,6 +231,10 @@ Three daemon threads run continuously after startup:
 | **Prediction Loop** | 30 min | For each registered datacenter: retrains (or cache-hits) the Ridge model, generates a 7-day forecast, and writes it to the `predictions` table |
 
 The 30-minute cycle aligns with the API's publication schedule — new carbon data arrives every 30 minutes, so retraining more frequently would produce identical models. The prediction cache TTL is set to 40 minutes, ensuring that a fresh forecast is always available before the previous one expires.
+
+### Sequential Prediction Processing
+
+Although the service runs three background threads concurrently (collector, sync, and prediction loop), the Prediction Loop itself processes data centres **sequentially** rather than spawning parallel threads per data centre. This is a deliberate constraint driven by memory: each data centre's cold-start training constructs a feature matrix of ~2 million rows × 65 columns, consuming approximately **1 GB of RAM**. Parallelising predictions across all 14 registered data centres would require up to 14 GB of concurrent memory, risking out-of-memory conditions on the deployment instance. Sequential processing caps peak memory to a single data centre's training footprint at any given time, and the [incremental training mechanism](#incremental-training-via-sufficient-statistics) ensures that after the initial cold start, each subsequent cycle's memory overhead is negligible (~58 KB per new reading).
 
 ### Incremental Training via Sufficient Statistics
 
