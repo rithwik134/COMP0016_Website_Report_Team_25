@@ -72,7 +72,7 @@ This upcoming presentation is not a mere dissemination of academic research. The
     balls
 
     [:octicons-mark-github-16: GitHub](https://github.com/akioweh)
-    [:octicons-link-external-16: Website](https://akioweh.com)
+    [:octicons-link-external-16: Website](https://www.researchgate.net/profile/Ali-Raza-Jafree/research)
     [:octicons-mail-16: Contact](mailto:0@akioweh.com)
 
 - **Rithwik**
