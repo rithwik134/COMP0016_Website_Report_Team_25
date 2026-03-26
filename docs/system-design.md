@@ -81,9 +81,11 @@ System Architecture Diagram showing the flow of data between external providers 
 
 ### Component Descriptions
 
-- **UI Component**: A modern, server-side rendered web application built with Next.js. It acts as the primary human-computer interface, visualizing global data center states, plotting environmental metrics, and allowing users to submit task requests and analyze optimized schedules.
-- **Scheduler Component**: The core logical computation engine written in C++23. Leveraging the Drogon HTTP framework, it acts as a stateless optimization service. It pulls telemetry and forecasts from the Stats module, runs a constraint solver based on Dynamic Programming (detailed in [Algorithms](./algorithms.md)), and determines the optimal workload distribution to minimize software carbon intensity.
-- **Stats Component**: A Python-based FastAPI background service that acts as a uniform data interface. It continuously ingests, normalizes, and forecasts external information such as grid carbon intensity, baseline data center load, and regional weather.
+| Component | Technology | Role |
+|-----------|-----------|------|
+| **UI** | Next.js 14 / React, shadcn/ui, Recharts, Leaflet | Server-side rendered web application. Provides the scheduling form, schedule result visualisation, global workload calendar, and data centre configuration page. Communicates with the Scheduler via REST. |
+| **Scheduler** | C++23, Drogon HTTP framework, PostgreSQL | Stateless optimisation service. Receives job requests from the UI, fetches forecasts from Stats via parallel coroutine HTTP calls, runs the two-phase DP solver (see [Algorithms](algorithms.md)), persists results to PostgreSQL, and returns the optimised schedule. |
+| **Stats** | Python 3.12, FastAPI, SQLite, scikit-learn | Data ingestion and forecasting service. Three background threads continuously collect carbon intensity data from the UK Carbon Intensity API, sync it into the serving database, and retrain a Ridge regression model per data centre every 30 minutes. Serves 7-day carbon intensity and load forecasts at 5-minute resolution to the Scheduler. |
 
 ### Stats Component — Internal Architecture
 
@@ -189,12 +191,132 @@ Sequence diagram showing the continuous ingestion pipeline and an interactive us
 
 ## Site Map
 
-The UI is structured as a unified dashboard tailored for geographic context and deep schedule insights. The primary navigation includes:
+The UI is structured as a single-page dashboard with tab-based navigation. The diagram below shows the page hierarchy and the transitions between views.
 
-- **Datacenter Map**: A geographic visualization overlaying the positions of datacenters with hardware capacities and environmental metrics.
-- **Workload Calendar**: A time-series grid showing both predicted baseline load across nodes and previously scheduled user workloads.
-- **Scheduling Form**: Inputs for new job requirements (Workload type, computing amount, and chronological availability window).
-- **Results & History View**: After successful scheduling, this displays the environmental impact metrics of the job compared to a non-optimized trivial placement, alongside historical logs of prior runs.
+```mermaid
+flowchart TD
+    Nav["Top Navigation Bar"]
+
+    Nav --> SF["Scheduling Form<br/><i>Job type, GPU specs, time window</i>"]
+    Nav --> GW["Global Workload<br/><i>Multi-DC calendar view</i>"]
+    Nav --> SJ["Scheduled Jobs<br/><i>List of previous jobs</i>"]
+
+    SF -->|"Configure Data Centres"| DC["Data Centre Configuration<br/><i>Map + toggle switches</i>"]
+    DC -->|"Back / Save"| SF
+
+    SF -->|"Schedule Job"| SR["Schedule Result<br/><i>Impact metrics, DC charts,<br/>optimised vs unoptimised</i>"]
+    SR -->|"Schedule Another Job"| SF
+
+    SJ -->|"Click job card"| SR
+    SR -->|"Cancel Job"| SJ
+```
+/// caption
+Site map showing page hierarchy and navigation flows.
+///
+
+| Page | Route | Purpose |
+|------|-------|---------|
+| Scheduling Form | `/` | Primary entry point. Users define hardware specs, time constraints, and submit jobs for optimisation. |
+| Schedule Result | `/schedule/{id}` | Displays the optimised schedule with environmental impact metrics, per-DC workload charts, and optimised/unoptimised comparison toggle. |
+| Global Workload | `/workload-calendar` | Multi-data-centre, multi-day calendar showing all scheduled workloads overlaid with carbon intensity, load, and capacity curves. |
+| Scheduled Jobs | `/scheduled-jobs` | Paginated list of all previously submitted jobs with summary metrics and carbon savings badges. Clicking a card navigates to the Schedule Result page. |
+| Data Centre Config | `/config` | Leaflet map of all 14 UK regions with toggle switches to enable/disable data centres for scheduling. Changes are persisted to the Stats API. |
+
+## API Specification
+
+The three components communicate exclusively over HTTP REST. The tables below document the inter-service contracts.
+
+### Scheduler API (consumed by UI)
+
+| Method | Endpoint | Request Body | Response | Description |
+|--------|----------|-------------|----------|-------------|
+| `POST` | `/api/schedules` | `JobRequest` JSON (job type, GPU type/count, model size, runtime, earliest start, latest finish) | `ScheduleResult` with schedule ID, impact metrics, and scheduled blocks | Submit a job for optimisation. The schedule is immediately persisted (Phase 1 of Commit-Cancel). |
+| `GET` | `/api/schedules/{id}` | — | Full schedule with blocks and impact | Retrieve a previously computed schedule. |
+| `GET` | `/api/schedules/{id}/trivial` | — | Trivial (unoptimised) schedule and impact | Retrieve the baseline contiguous schedule for comparison. |
+| `GET` | `/api/schedules/summary` | Optional `start`, `end`, `location` query params | List of job summaries | List all scheduled jobs with summary metrics. |
+| `DELETE` | `/api/schedules/{id}` | — | 204 No Content | Cancel a scheduled job and release reserved capacity (Phase 2 of Commit-Cancel). |
+
+### Stats API (consumed by Scheduler and UI)
+
+| Method | Endpoint | Response | Description |
+|--------|----------|----------|-------------|
+| `GET` | `/locations` | List of active data centres with IDs and coordinates | Returns only data centres currently enabled for scheduling. |
+| `GET` | `/datacenters` | Full list of all 14 data centres with active state | Returns all registered data centres regardless of active status. |
+| `PATCH` | `/datacenters/{id}` | Updated data centre record | Toggle a data centre's active/inactive state. |
+| `GET` | `/locations/{id}/metrics/forecast_carbon_intensity` | Time series of carbon intensity (gCO2/kWh) at 5-min resolution | 7-day forecast stitching historical observations with predicted values. Accepts optional `start_time` and `end_time` query params. |
+| `GET` | `/locations/{id}/metrics/forecast_load` | Time series of load at 5-min resolution | 7-day synthetic load forecast for the specified data centre. |
+| `GET` | `/predictionWindow` | `{ "hours": 168 }` | Returns the current forecast window length. |
+
+---
+
+## Class Diagram — Scheduler Core
+
+The Scheduler's internal architecture separates HTTP transport, business logic, and persistence into distinct layers. The diagram below shows the key classes and their relationships.
+
+```mermaid
+classDiagram
+    class ScheduleController {
+        +createSchedule(req) Task~HttpResponsePtr~
+        +getSchedule(req, id) Task~HttpResponsePtr~
+        +deleteSchedule(req, id) Task~HttpResponsePtr~
+        +getSummary(req) Task~HttpResponsePtr~
+    }
+
+    class SchedulingQueue {
+        -queue : lockfree::queue~SchedulerTask*~
+        -running : atomic~bool~
+        +pushBack(task) void
+        -runTasks() Task~void~
+    }
+
+    class Scheduler {
+        +computeSchedule(req) Task~SchedulerOutput~
+        -fetchForecasts(locations) Task~ForecastData~
+    }
+
+    class SchedulerAlgo {
+        +calcSingle(costs, W, P) CostTable
+        +calcMulti(costTables, W) SpatialResult
+    }
+
+    class CalendarService {
+        +persistSchedule(output) Task~void~
+        +getSchedule(id) Task~ScheduleResult~
+        +deleteSchedule(id) Task~void~
+    }
+
+    class JobRequest {
+        +job_type : string
+        +gpu_type : string
+        +gpu_count : int
+        +model_size : float
+        +length : float
+        +earliest_start : timepoint
+        +latest_finish : timepoint
+        +workload_amount : float
+        +max_load : float
+        +startup_overhead : float
+    }
+
+    class LocationCost {
+        +carbon_intensity : vector~double~
+        +capacity : vector~double~
+        +kwh_per_flo : double
+        +operator[](i) CostFn
+    }
+
+    ScheduleController --> SchedulingQueue : enqueues
+    SchedulingQueue --> Scheduler : dispatches
+    Scheduler --> SchedulerAlgo : invokes DP
+    Scheduler --> CalendarService : persists results
+    SchedulerAlgo --> LocationCost : evaluates cost
+    ScheduleController ..> JobRequest : deserialises from HTTP
+```
+/// caption
+Class diagram of the Scheduler component showing the separation between HTTP controllers, the lock-free scheduling queue, the DP algorithm, and the persistence layer.
+///
+
+---
 
 ## Design Patterns
 
@@ -209,7 +331,12 @@ The UI is structured as a unified dashboard tailored for geographic context and 
 Storage is decentralized into bounded contexts, matching the microservice strategy.
 
 ### 1. Stats Persistence
-The Stats module utilizes **SQLite** for rapid reading and writing of transient historical context. A background worker continuously writes synthetic or retrieved metrics to the local database, allowing the main web threads to handle GET requests instantly with negligible latency overhead.
+The Stats module utilizes two **SQLite** databases to separate write-heavy collection from read-heavy serving:
+
+- **`carbon_intensity.db`** — Owned by the Carbon Collector thread. Stores raw 30-minute carbon intensity readings and generation mix data from the UK Carbon Intensity API. On first startup, performs a 365-day historical backfill.
+- **`cache.db`** — The serving database. Contains synced historical data, cached forecast JSON (with 40-minute TTL expiry), pre-upsampled 5-minute historical data for the trailing 7 days, and the data centre registry (all 14 UK regions with active/inactive state and coordinates).
+
+This separation ensures the collector can write freely without contending with API read traffic on the serving layer.
 
 ### 2. Scheduler Persistence
 The Scheduler connects to a **PostgreSQL** cluster for persistent record-keeping of jobs. The schema explicitly handles mapping a unified scheduled job to granular functional chunks. It records unoptimized variations to expose tangible ROI metrics for users.

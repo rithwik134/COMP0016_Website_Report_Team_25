@@ -234,6 +234,48 @@ Iteration 3 chart concept — carbon intensity with capacity-based load
 
 ---
 
+## Final Design
+
+The following screenshots show the final production interface after all three iterations of design refinement.
+
+### Scheduling Form
+
+The primary entry point for users. Hardware-specific inputs (GPU type, GPU count, model VRAM size, estimated runtime) replace the abstract "workload amount" from earlier iterations. The scheduling window shows the available 168-hour forecast range, and users can optionally constrain the job to a single data centre or let the optimiser decide.
+
+![Final design — Scheduling Form](images/stats/final-scheduling-form.png)
+/// caption
+Final Scheduling Form with hardware-specific inputs and configurable scheduling window.
+///
+
+### Schedule Result
+
+After submission, the result page presents the environmental impact metrics (carbon intensity, total emissions, total electricity) with percentage savings badges. The Optimised/Unoptimised toggle allows direct comparison. The data centre workload distribution chart shows the schedule across all active data centres, with carbon intensity (red), outside load (blue), capacity (purple), and the "Now" reference line (amber).
+
+![Final design — Schedule Result](images/stats/final-schedule-result.png)
+/// caption
+Schedule Result page showing environmental impact metrics and per-data-centre workload distribution.
+///
+
+### Global Workload Calendar
+
+A multi-region, multi-day overview of all scheduled workloads. Each row represents a data centre, with scheduled blocks (green), carbon intensity (red), outside load (blue), and capacity (purple) overlaid. Day boundaries are marked with dashed vertical lines. This view enables operators to see the full system state at a glance.
+
+![Final design — Global Workload Calendar](images/stats/final-global-workload.png)
+/// caption
+Global Workload Calendar showing scheduled jobs across all active data centres.
+///
+
+### Data Centre Configuration
+
+The governance page for enabling and disabling data centres. A Leaflet map on the left shows all 14 UK regions with active (black) and inactive (grey) markers. The table on the right provides toggle switches per data centre. The "Save Configuration" button persists the selection to the Stats API.
+
+![Final design — Data Centre Configuration](images/stats/final-dc-config.png)
+/// caption
+Data Centre Configuration page with interactive map and toggle controls.
+///
+
+---
+
 ## Iteration Summary
 
 | Aspect | Iteration 1 | Iteration 2 | Iteration 3 (Final) |
