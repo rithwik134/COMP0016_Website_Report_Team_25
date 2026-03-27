@@ -95,53 +95,103 @@ This ensures the optimization engine operates on universal metrics (Compute in F
 
 The scheduler requires a strictly "frozen" snapshot of infrastructure state (existing reservations and available capacity) to ensure mathematical correctness. Concurrent processing of two schedules would create a data race where multiple instances assume some same free capacity, leading to over-provisioning and infeasible deployment plans.
 
-We resolved this requirement by serializing scheduling computations through a **lock-free coroutine queue**. This architecture decouples the optimization hot-path from the HTTP event loop, allowing the system to queue requests and process them sequentially without compromising the responsiveness of the REST API.
+We resolved this by serializing scheduling computations through a **lock-free coroutine queue**. This architecture decouples the optimization hot-path from the HTTP event loop, allowing the system to queue requests and process them sequentially without compromising API responsiveness.
 
-We designed the `SchedulingQueue` as a producer-consumer bridge that decouples the long-running optimization task from the HTTP event loop. The HTTP thread (the producer) wraps the validated request in a task and pushes it onto the queue, immediately yielding its execution.
+#### The Producer-Consumer Pattern
+
+We designed the `SchedulingQueue` as a bridge where the HTTP thread (the producer) pushes a `SchedulerTask` and immediately yields, while a background coroutine (the consumer) pops and executes them.
+
+```cpp
+// 1. Controller pushes request to the queue
+auto output = co_await schedulingQueue.computeSchedule<Scheduler>(job_request);
+
+// 2. Queue wraps request in a task and yields execution
+auto computeSchedule(const JobRequest &req) -> Task<SchedulerOutput> {
+    auto task = make_shared<SchedulerTask>(make_unique<Sched>(...), req);
+    push_back(task.get());
+    co_return co_await *task; // Suspends until consumer resumes it
+}
+```
 
 #### Lock-Free Concurrency & Lost-Wakeup Prevention
 
-We utilized `boost::lockfree::queue` for zero-contention task storage. A dedicated background coroutine (`runTasks`) acts as the consumer, popping and computing requests sequentially.
+We utilized `boost::lockfree::queue` for zero-contention task storage. A dedicated background coroutine (`runTasks`) acts as the consumer. A critical concurrency edge-case occurs when the queue drains: the worker might flag itself as `running = false` at the exact nanosecond a new request arrives. We eliminated this "lost wakeup" race by implementing a robust double-checked atomic pattern:
 
-A critical concurrency edge-case occurs when the queue drains: the worker might flag itself as `running = false` at the exact nanosecond a new request arrives. We eliminated this "lost wakeup" race condition by implementing a robust double-checked pattern:
+```cpp
+auto runTasks() -> Task<> {
+start:
+    while (Q.pop(task)) { ... } // Process all available tasks
 
-1. The worker atomically decrements a `queueSize` counter.
-2. If the counter is zero, it attempts to set `running = false`.
-3. It then re-checks `queueSize`; if a task slipped in during the state transition, it atomically re-acquires the `running` lock and executes a `goto start;` jump to resume processing.
+    running.store(false, memory_order_release);
+
+    // Double-check: did a task arrive during the store?
+    if (queueSize.load(memory_order_acquire) > 0) {
+        if (running.compare_exchange_strong(expected_false, true)) {
+            goto start; // Safely resume processing
+        }
+    }
+}
+```
 
 #### C++20 Coroutine State Machine (`SchedulerTask`)
 
-To coordinate results across thread boundaries, we developed `SchedulerTask`—a custom awaitable type utilizing a lock-free state machine (`Pending`, `Suspended`, `Done`).
+To coordinate results across thread boundaries, we developed `SchedulerTask`, a custom awaitable utilizing a lock-free state machine (`Pending`, `Suspended`, `Done`).
 
-Managing its lifecycle is challenging due to the "suspension race condition": the worker might finish calculating before the HTTP thread has fully suspended. We solved this by using an atomic `compare_exchange_strong` in `await_suspend`. If the worker has already set the state to `Done`, the HTTP thread aborts its suspension and returns the result immediately. This guarantees that the continuation handle is never lost and ensures immediate response hand-off once computation completes.
+Managing its lifecycle is challenging due to the "suspension race condition": the worker might finish calculating before the HTTP thread has fully suspended. We solved this by using an atomic `compare_exchange_strong` in `await_suspend`.
+
+```cpp
+auto await_suspend(coroutine_handle<> handle) {
+    taskHandle.store(handle, memory_order_release);
+    auto expected = State::Pending;
+    // If worker already set state to Done, return false to abort suspension
+    return state.compare_exchange_strong(expected, State::Suspended, memory_order_acq_rel);
+}
+
+auto resume() {
+    auto expected = State::Pending;
+    // If state is still Pending, worker finished before suspension
+    if (state.compare_exchange_strong(expected, State::Done, memory_order_acq_rel))
+        return;
+
+    // Otherwise, resume the suspended HTTP thread
+    taskHandle.load(memory_order_acquire).resume();
+}
+```
+
+This guarantees that the continuation handle is never lost and ensures immediate response hand-off once computation completes.
 
 ### 3. Execution Orchestration (`SchedulerBase`)
 
-Scheduling bridges I/O-bound data fetching with CPU-intensive optimization. We designed the execution lifecycle around **cooperative coroutines** to manage this transition while maintaining the strict serialization required by the engine.
+Scheduling bridges I/O-bound data fetching with CPU-intensive optimization. We implemented the execution lifecycle as a chain of **cooperative coroutines** rather than a traditional thread-per-request model, allowing us to manage complex orchestration while maintaining the strict serialization required by the engine.
 
 #### The Coroutine Queue Rationale
 
-While the queue manages task ordering, its implementation as a **"coroutine queue"** is fundamental to our orchestration strategy. By defining scheduling tasks as C++20 coroutines, we enabled them to pause and resume across I/O boundaries. A task can suspend while awaiting regional carbon forecasts and resume only when the data is ready and the scheduling lock is available. This cooperative model ensures that expensive DP computations never "hog" the main thread, keeping the API responsive for concurrent requests while guaranteeing that only one optimization instance runs at any given time.
+The identity of the `SchedulingQueue` as a **"coroutine queue"** is fundamental to our orchestration strategy. By defining scheduling tasks as C++20 coroutines, we achieved three primary objectives:
+
+* **Cooperative Yielding**: Tasks can suspend during I/O-bound operations (e.g., awaiting regional carbon forecasts) and resume only when data is ready. This allows the background worker to yield execution instead of idling or blocking an OS thread.
+* **Serialized Engine Access**: The optimization engine requires a strictly "frozen" infrastructure snapshot. The queue ensures that while multiple tasks can be suspended awaiting data, only a single coroutine instance enters the DP computation hot-path at any time, eliminating the need for complex mutex-based locking.
+* **Event Loop Integrity**: By offloading the serialized execution to a background coroutine loop, we prevent expensive DP calculations from "hogging" the main thread. This ensures that the REST API remains responsive to concurrent requests even while a 9-billion-transition optimization is in progress.
 
 #### The Non-Virtual Interface (NVI) Pattern
 
-We utilized the **Non-Virtual Interface (NVI)** pattern in `SchedulerBase` to enforce a standard orchestration sequence across all scheduler implementations (e.g., the production DP engine and the trivial baseline).
+We enforced a standard execution template across all implementations using the **Non-Virtual Interface (NVI)** pattern. This ensures that validation and data orchestration are centralized in the base class rather than being duplicated across subclasses.
 
 ```cpp
 // 1. Public non-virtual interface for eager validation
 auto SchedulerBase::scheduleJob(JobRequest job) -> Task<SchedulerOutput> {
+    // Eagerly reject invalid requests before they enter the queue
     if (job.workload_amount < 0.) throw ValidationException(...);
     
-    // 2. Delegate to the protected virtual implementation
+    // 2. Delegate to the implementation-specific solver
     return doScheduleJob(std::move(job));
 }
 ```
 
-This pattern ensures that validation logic is never bypassed by subclasses and provides a stable hook for the `SchedulingQueue` to trigger execution.
+This pattern provides a stable entry point for the `SchedulingQueue` while guaranteeing that all scheduling requests (DP or baseline) undergo identical constraint checks.
 
 #### Concurrent Data Fetching
 
-Before computation, the base class gathers regional carbon forecasts and infrastructure reservations via the `fetch_data` method. We parallelized these disparate I/O sources using our custom `when_all` combinator:
+Before triggering the solver, `SchedulerBase` harmonizes internal and external state via the `fetch_data` coroutine. We parallelized these disparate I/O sources using our custom `when_all` combinator to minimize total latency:
 
 ```cpp
 // Parallelize HTTP (Stats API) and Database (Calendar) requests
@@ -152,9 +202,9 @@ const auto [locations, existing_schedule] = co_await coro::when_all(
 
 #### Temporal Alignment (`TIME_GRIDDER`)
 
-External API data is inherently heterogeneous; carbon forecasts arrive in 30-minute intervals while weather metrics are hourly. We developed the `TIME_GRIDDER` utility to discretize and align these physical timestamps onto a uniform **5-minute integer grid**.
+External data arrives in heterogeneous granularities (30-minute carbon windows vs. hourly weather metrics). We developed the `TIME_GRIDDER` utility to discretize these physical timestamps onto a uniform **5-minute integer grid**.
 
-By mapping `std::chrono::time_point`s to discrete indices relative to a universal epoch, we transformed costly date-time arithmetic into constant-time array indexing. This normalization allowed the optimization engine to operate on contiguous memory buffers, significantly improving cache locality during the DP transition phase by replacing physical time checks with integer offset lookups.
+By mapping `std::chrono::time_point`s to discrete indices relative to a universal epoch, we transformed costly date-time arithmetic into constant-time array indexing. This normalization allowed the optimization engine to operate on contiguous memory buffers, significantly improving cache locality by replacing physical time checks with integer offset lookups in the memoization tables.
 
 ### 4. Persistence & Global State (`Calendar`)
 
@@ -185,24 +235,40 @@ To quantify the environmental benefit of our optimization, the system calculates
 
 ### 5. The Optimization Engine (`SchedulerAlgo`)
 
-The engine implements a bespoke Dynamic Programming (DP) algorithm designed to minimize carbon emissions across a distributed infrastructure. We partitioned the solver into two distinct stages to manage the high-dimensional state space.
+The engine core implements a custom Dynamic Programming (DP) algorithm designed to minimize carbon emissions across distributed infrastructure. We partitioned the solver into two distinct stages to manage the high-dimensional state space.
 
 #### Layered Dynamic Programming
 
-1. **Temporal Phase (`calc_single`)**: We solve the optimal allocation for a single data center across the time horizon. This stage evaluates per-interval capacity limits and enforces non-continuous run penalties (startup overheads).
-2. **Spatial Phase (`calc_multiple`)**: After generating cost curves for all candidate locations, the engine solves a **Multiple-Choice Knapsack Problem** to distribute the total workload across regions for the lowest aggregate carbon footprint.
+| Phase | Scope | Core Responsibility |
+| :--- | :--- | :--- |
+| **Temporal (`calc_single`)** | Single Datacenter | Solves optimal allocation across the 7-day time horizon, evaluating per-interval capacity limits and enforcing non-continuous run penalties (startup overheads). |
+| **Spatial (`calc_multiple`)** | Multi-Region | After generating cost curves for all candidate locations, solves a **Multiple-Choice Knapsack Problem** to distribute total workload across regions for the lowest aggregate carbon footprint. |
 
 #### Parallel Solver Execution
 
-We utilized `std::async` to parallelize the spatial phase, triggering independent regional temporal solvers concurrently. By offloading these compute-heavy tasks to a thread pool, we achieved near-linear speedup relative to the number of candidate data centers. Additionally, we parallelized the row-wise updates of the multi-choice knapsack DP table using C++ execution policies (`std::execution::par_unseq`), significantly reducing computation time for high-resolution discretization.
+We optimized the spatial phase for multi-core architectures by parallelizing independent solver instances. By utilizing `std::async`, we trigger regional temporal solvers concurrently, achieving near-linear speedup relative to the number of candidate data centers. Additionally, we parallelized the row-wise updates of the multi-choice knapsack DP table using C++ execution policies (`std::execution::par_unseq`).
 
 #### Instruction-Level Optimizations (SIMD)
 
-Profiling with Linux `perf` revealed that a scalar implementation would process over **9 billion transitions** for a worst-case 7-day request, leading to significant latency. We optimized the DP hot-path through hardware-level performance engineering:
+Profiling with Linux `perf` revealed that a naive scalar implementation would process over **9 billion transitions** for a worst-case request. We eliminated this bottleneck through hardware-level performance engineering:
 
-* **Data Layout (SoA)**: We refactored memoization tables from **Array of Structs (AoS)** to **Struct of Arrays (SoA)**. By grouping fields (such as `costs` and `parents`) into contiguous memory, we reduced L1 cache misses by approximately 25%, as the CPU no longer loads irrelevant reconstruction metadata during cost updates.
+* **Data Layout (SoA)**: We refactored memoization tables from **Array of Structs (AoS)** to **Struct of Arrays (SoA)**. By grouping fields like `costs` and `parents` into contiguous memory, we reduced L1 cache misses by ~25% as the CPU no longer loads irrelevant reconstruction metadata during the cost-update hot-path.
+* **SIMD Vectorization**: We manually vectorized the innermost DP transition loop using **AVX2 and AVX512 intrinsics**.
 
-* **SIMD Vectorization**: We manually vectorized the innermost DP transition loop using **AVX2 and AVX512 intrinsics**. By employing branchless logic and mask-based stores, the CPU evaluates 8 floating-point transitions per clock cycle. The engine detects host capabilities at runtime to select the optimal scalar, AVX2, or AVX512 code path.
+```cpp
+// SIMD vectorized transition: 8 floating-point ops per cycle
+const auto add_cost = _mm512_loadu_pd(&cost_table[wi]);
+const auto new_cost = _mm512_add_pd(prevxV, add_cost);
+const auto row0V = _mm512_loadu_pd(&row0[targetRowIndex]);
+
+// Branchless update using mask-based stores
+const auto mmask = _mm512_cmp_pd_mask(new_cost, row0V, _CMP_LT_OS);
+if (mmask) {
+    _mm512_mask_storeu_pd(&row0[targetRowIndex], mmask, new_cost);
+    _mm256_mask_storeu_epi32(&memo_entry.alloc[targetRowIndex], mmask, wiV);
+}
+```
+
 * **Aligned Allocation**: We utilized `boost::alignment::aligned_allocator` to ensure DP vectors are boundary-aligned with the 64-byte width of AVX512 registers, avoiding the performance penalties of unaligned memory access.
 
 ### 6. Data Structure Design
@@ -237,28 +303,68 @@ The system enforces strict **Value Semantics**. By treating scheduled blocks and
 
 #### Recursive Serialization via Niebloids
 
-To avoid repetitive boilerplate code for JSON serialization, we implemented a concept-driven "niebloid" pattern. By defining a custom `Serializable` concept and a `toJson` function object, we enabled recursive serialization of complex nested containers (e.g., `std::vector<InternalBlock>`, `std::optional<T>`). This allows new domain structs to become serializable simply by providing a symmetric `f_toJson` free function, which the `toJson` niebloid discovers via Argument-Dependent Lookup (ADL).
+To avoid repetitive boilerplate code for JSON serialization, we implemented a concept-driven **niebloid** pattern. By defining a custom `Serializable` concept and a `toJson` function object, we enabled recursive serialization of complex nested containers (e.g., `std::vector<T>`, `std::optional<T>`).
+
+```cpp
+// 1. Customization point discovers overloads via ADL
+template <typename T>
+concept Serializable = requires(const T &obj) {
+    { f_toJson(obj) } -> std::convertible_to<Json::Value>;
+};
+
+// 2. Niebloid function object for recursive discovery
+inline constexpr struct {
+    auto operator()(const Serializable auto &obj) const {
+        return f_toJson(obj);
+    }
+} toJson{};
+
+// 3. Recursive overload for STL containers
+template <Serializable T>
+auto f_toJson(const std::vector<T> &vec) -> Json::Value {
+    auto res = Json::Value(Json::arrayValue);
+    for (const auto &elem : vec) res.append(toJson(elem)); // Recurse
+    return res;
+}
+```
+
+This architecture allows new domain structs to become serializable simply by providing a symmetric `f_toJson` free function, which the `toJson` niebloid automatically discovers through Argument-Dependent Lookup (ADL).
 
 ### 7. Core Utilities (`scheduler::coro`)
 
-The scheduler relies on custom asynchronous primitives to coordinate complex I/O operations. The most critical utility is our **Lock-Free `when_all` Combinator**, which we developed to parallelize regional forecast fetching.
+The scheduler relies on custom asynchronous primitives to coordinate complex I/O operations. The most critical utility is our **Lock-Free `when_all` Combinator**, which we developed to parallelize regional forecast fetching across the Stats API and database.
 
 #### Thread Coordination & Race Prevention
 
-Fetching metrics for multiple regions concurrently involves coordinating several background worker threads. Our `when_all` implementation uses a shared `ResultContext` and a lock-free state machine to manage this:
+Coordinate results from multiple background worker threads required a robust, lock-free state machine. Our `when_all` implementation utilizes a shared `ResultContext` to manage task lifecycles:
 
-* **Atomic Synchronization**: We utilize an atomic `remaining` counter. Each asynchronous child task is wrapped in a lambda that executes a `ScopeGuard` upon completion. This guard decrements the counter via `std::memory_order_acq_rel`, ensuring that the final task to resolve safely resumes the parent coroutine.
-* **Suspension Bypassing**: We implemented an atomic `continuation` handle to handle cases where all children finish before the parent coroutine can even suspend. In these instances, the parent detects the "already done" state and bypasses the suspension overhead entirely.
+```cpp
+// Lock-free completion logic
+void complete_one() {
+    // 1. Atomically decrement task counter
+    if (remaining.fetch_sub(1, memory_order_acq_rel) != 1)
+        return; // Other tasks still in-flight
+
+    // 2. The final task atomically exchanges the continuation handle
+    auto old_handle = continuation.exchange(WAITING_CONTINUATION, memory_order_acq_rel);
+
+    // 3. Resume the parent coroutine if it has already suspended
+    if (old_handle != NO_CONTINUATION)
+        old_handle.resume();
+}
+```
+
+* **Suspension Bypassing**: We implemented an atomic `continuation` state to handle "fast-path" cases where all children finish before the parent coroutine can even suspend. In these instances, the parent detects the `WAITING_CONTINUATION` state and bypasses the suspension overhead entirely.
 
 #### Generic Metaprogramming
 
-We utilized **C++20 Concepts** and **Fold Expressions** to allow the combinator to accept heterogeneous task types (e.g., mixing database queries with HTTP requests). It dynamically resolves return types to package results into an `std::tuple` or an `std::vector`, providing a type-safe interface for concurrent operations.
+We utilized **C++20 Concepts** and **Fold Expressions** to allow the combinator to accept heterogeneous task types. It dynamically resolves return types to package results into an `std::tuple` or an `std::vector`, providing a type-safe interface for concurrent operations.
 
 #### Atomic Exception Capture
 
-To handle network failures robustly, we implemented a lock-free exception capture mechanism. If multiple asynchronous operations fail simultaneously, only the first thread wins an atomic race to move its `std::exception_ptr` into the shared context. This ensures that the parent coroutine accurately rethrows the first encountered error, allowing for clean abortion of the entire scheduling workflow.
+To handle network failures robustly, we implemented a lock-free exception capture mechanism using an atomic three-state flag (`NO_EXCEPTION`, `IN_PROGRESS`, `CAPTURED`). If multiple asynchronous operations fail simultaneously, only the first thread wins the atomic race to move its `std::exception_ptr` into the shared context, ensuring that the parent coroutine rethrows the first encountered error for clean abortion.
 
-## Forecasting Service (Stats Component)
+## `stats` (Forecasting Service)
 
 The Stats service is a **FastAPI** application in Python, deployed on a dedicated **Oracle Cloud** instance, that continuously ingests carbon intensity data, trains a Ridge regression model per data center, and serves 7-day carbon intensity forecasts at 5-minute resolution to the C++ Scheduler via a REST API. For details on model selection and experimental comparison against alternative approaches, see the [Research — Forecasting Model Research](research.md#forecasting-model-research) page. The full experimental data is documented in the [AI Research Journal](dev-journal.md).
 
