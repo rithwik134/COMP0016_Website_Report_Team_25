@@ -75,7 +75,7 @@ This upcoming presentation is not a mere dissemination of academic research. The
 
     [:octicons-mark-github-16: GitHub](https://github.com/arjafree)
     [:octicons-link-external-16: Website](https://www.researchgate.net/profile/Ali-Raza-Jafree/research)
-    [:octicons-mail-16: Contact](mailto:0@akioweh.com)
+    [:octicons-mail-16: Contact](mailto:ali.jafree.24@ucl.ac.uk)
 
 - **Rithwik**
 
