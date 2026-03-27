@@ -1,5 +1,8 @@
 # Algorithms
 
+> [!DANGER]  
+> need references
+
 The core of the Carbon-Aware AI Agent is its **Spatio-Temporal Scheduler**, a high-performance C++ engine that solves a complex resource allocation problem to minimize the carbon footprint of AI workloads.
 
 ---
@@ -102,32 +105,32 @@ $$ \mathcal{O}\big(m \cdot W \cdot (n \cdot H_{max} + W)\big) $$
 
 ---
 
-## Natural Inputs & Physical Units
-
-To make the system accessible to AI engineers, the scheduler translates "natural" hardware specifications into the mathematical units required by the DP engine, ensuring the final cost reflects real-world carbon emissions.
-
-### Hardware Specification Translation
-
-Instead of abstract workload units, users provide:
-
-- **GPU Model**: (e.g., Nvidia A100 SXM4, V100 PCIe).
-- **GPU Count**: Total number of parallel accelerators.
-- **Model Size (GB)**: The memory footprint of the weights.
-- **Runtime (Hours)**: The expected duration of the task.
-
-The system performs a multi-stage translation to derive the internal parameters:
-
-1. **Workload Magnitude ($W$)**: Calculated in **Floating Point Operations (FLO)**.
-2. **Startup Energy Tax ($P$)**: This penalty includes the energy required for BIOS/POST surges, OS/container initialization, and the SXM/PCIe bus energy used to transfer model weights into VRAM.
-3. **Physical Throughput ($r_{i,j}$)**: The maximum workload completed in a 5-minute block is strictly capped by the physical throughput of the requested GPU cluster.
-
-### The Cost Function: `LocationCost`
-
-The algorithm's internal cost is calculated by the `LocationCost` struct, which maps workload units to physical carbon emissions in grams ($g$):
-
-$$\text{Cost (gCO}_2) = \text{Workload (FLO)} \times \text{Efficiency (kWh/FLO)} \times \text{Intensity (gCO}_2/\text{kWh)}$$
-
-By calculating cost in absolute physical units, the "minimum cost" identified by the DP engine corresponds exactly to the global minimum of greenhouse gas emissions for that specific hardware profile.
+<!-- ## Natural Inputs & Physical Units -->
+<!---->
+<!-- To make the system accessible to AI engineers, the scheduler translates "natural" hardware specifications into the mathematical units required by the DP engine, ensuring the final cost reflects real-world carbon emissions. -->
+<!---->
+<!-- ### Hardware Specification Translation -->
+<!---->
+<!-- Instead of abstract workload units, users provide: -->
+<!---->
+<!-- - **GPU Model**: (e.g., Nvidia A100 SXM4, V100 PCIe). -->
+<!-- - **GPU Count**: Total number of parallel accelerators. -->
+<!-- - **Model Size (GB)**: The memory footprint of the weights. -->
+<!-- - **Runtime (Hours)**: The expected duration of the task. -->
+<!---->
+<!-- The system performs a multi-stage translation to derive the internal parameters: -->
+<!---->
+<!-- 1. **Workload Magnitude ($W$)**: Calculated in **Floating Point Operations (FLO)**. -->
+<!-- 2. **Startup Energy Tax ($P$)**: This penalty includes the energy required for BIOS/POST surges, OS/container initialization, and the SXM/PCIe bus energy used to transfer model weights into VRAM. -->
+<!-- 3. **Physical Throughput ($r_{i,j}$)**: The maximum workload completed in a 5-minute block is strictly capped by the physical throughput of the requested GPU cluster. -->
+<!---->
+<!-- ### The Cost Function: `LocationCost` -->
+<!---->
+<!-- The algorithm's internal cost is calculated by the `LocationCost` struct, which maps workload units to physical carbon emissions in grams ($g$): -->
+<!---->
+<!-- $$\text{Cost (gCO}_2) = \text{Workload (FLO)} \times \text{Efficiency (kWh/FLO)} \times \text{Intensity (gCO}_2/\text{kWh)}$$ -->
+<!---->
+<!-- By calculating cost in absolute physical units, the "minimum cost" identified by the DP engine corresponds exactly to the global minimum of greenhouse gas emissions for that specific hardware profile. -->
 
 ---
 
@@ -135,49 +138,12 @@ For details on the technical implementation of the DP engine, including **AVX-51
 
 ---
 
-## Quantitative Analysis
+## Carbon Intensity Forecasting
 
-### The Emissions Hierarchy
+The forecasting algorithm is what serves carbon intensity predictions to the scheduler. The stages of its development and in-depth research into the prediction method can be found at the [Forecasting Model Research](research.md#forecasting-model-research) and [AI Research Journal](dev-journal.md) pages respectively. The production model, **RidgeFull**, is an enhanced Ridge regression — a linear model with L2 regularisation that prevents overfitting by penalising large coefficients [1]. It operates on 65 engineered input features spanning five groups: temporal patterns (Fourier harmonics encoding hour-of-day, day-of-week, and day-of-year cycles), horizon encoding (polynomial and logarithmic terms describing how far ahead the prediction is), recent carbon intensity statistics (rolling means, lags, and trends), weather conditions (temperature, wind speed, solar radiation, cloud cover, and pressure from the Open-Meteo API), and cross-group interaction terms that let the linear model capture non-linear relationships. The model uses **direct forecasting** — each of the 336 horizon steps (7 days at 30-minute resolution) is predicted independently from historical data, rather than recursively feeding predictions back as inputs, which avoids the error compounding that degraded more complex models in our experiments.
 
-Experimental data shows a clear hierarchy in how carbon is saved. While temporal flexibility (splitting a job within one region) is useful, **spatial flexibility** (routing between regions) is the primary driver of impact.
+### References
 
-![Emissions Hierarchy](images/algorithms/plot_baseline_validation_spatial_difference.png)
-/// caption
-The emissions hierarchy, demonstrating the massive savings potential of spatial routing over temporal-only optimization.
-///
-
-### Algorithmic Scalability
-
-Despite the complexity of the DP model, the C++ implementation ensures that scheduling overhead remains negligible, enabling real-time orchestration.
-
-![Complexity Scaling](images/algorithms/plot_complexity_scaling_window.png)
-/// caption
-Execution time scales linearly with the scheduling window, remaining well under 1.2 seconds for a 144-hour horizon.
-///
-
-### Mathematical Guarantee
-
-Because the DP engine's search space is a superset of traditional contiguous schedulers, it **mathematically guarantees** that the produced schedule will have a carbon footprint less than or equal to the GSF SDK baseline.
-
-![Baseline Validation](images/algorithms/plot_baseline_validation.png)
-/// caption
-Our DP scheduler consistently outperforms the contiguous GSF SDK baseline, especially as workload size increases.
-///
+[1] A. E. Hoerl and R. W. Kennard, "Ridge regression: Biased estimation for nonorthogonal problems," *Technometrics*, vol. 12, no. 1, pp. 55–67, Feb. 1970, doi: [10.1080/00401706.1970.10488634](https://doi.org/10.1080/00401706.1970.10488634).
 
 ---
-
-## Forecasting Dependency: Performance
-
-While the scheduler is the "brain," its effectiveness depends on the accuracy of the "eyes" (the Forecasting service).
-
-![Weather Comparison](images/algorithms/weather_comparison.png)
-/// caption
-The Direct-XGBoost forecasting model achieved a 10.6% improvement in MAE, providing more reliable data for the scheduler's optimization passes.
-///
-
-![Weather Horizon Analysis](images/algorithms/weather_horizon.png)
-/// caption
-Performance improvement at different forecast horizons after weather integration.
-///
-
-For a detailed breakdown of the forecasting model's development and evaluation, see the [Implementation](implementation.md), [Research — Forecasting Model Research](research.md#forecasting-model-research), and [AI Research Journal](dev-journal.md) pages.

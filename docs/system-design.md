@@ -75,6 +75,7 @@ flowchart TB
     classDef external fill:#eeeeee,stroke:#999999,stroke-width:1px,stroke-dasharray: 4 4
     classDef dataNode fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
 ```
+
 /// caption
 System Architecture Diagram showing the flow of data between external providers and the core system components.
 ///
@@ -133,6 +134,7 @@ flowchart TB
     CACHE -->|"serve cached forecasts"| API
     API -->|"HTTP"| SCHED
 ```
+
 /// caption
 Internal architecture of the Stats component, showing the data pipeline from external API ingestion through model training and caching to forecast delivery.
 ///
@@ -185,6 +187,7 @@ sequenceDiagram
 
     UI->>U: Display Visualization & Schedule
 ```
+
 /// caption
 Sequence diagram showing the continuous ingestion pipeline and an interactive user scheduling request.
 ///
@@ -210,6 +213,7 @@ flowchart TD
     SJ -->|"Click job card"| SR
     SR -->|"Cancel Job"| SJ
 ```
+
 /// caption
 Site map showing page hierarchy and navigation flows.
 ///
@@ -312,6 +316,7 @@ classDiagram
     SchedulerAlgo --> LocationCost : evaluates cost
     ScheduleController ..> JobRequest : deserialises from HTTP
 ```
+
 /// caption
 Class diagram of the Scheduler component showing the separation between HTTP controllers, the lock-free scheduling queue, the DP algorithm, and the persistence layer.
 ///
@@ -331,6 +336,7 @@ Class diagram of the Scheduler component showing the separation between HTTP con
 Storage is decentralized into bounded contexts, matching the microservice strategy.
 
 ### 1. Stats Persistence
+
 The Stats module utilizes two **SQLite** databases to separate write-heavy collection from read-heavy serving:
 
 - **`carbon_intensity.db`** — Owned by the Carbon Collector thread. Stores raw 30-minute carbon intensity readings and generation mix data from the UK Carbon Intensity API. On first startup, performs a 365-day historical backfill.
@@ -339,6 +345,7 @@ The Stats module utilizes two **SQLite** databases to separate write-heavy colle
 This separation ensures the collector can write freely without contending with API read traffic on the serving layer.
 
 ### 2. Scheduler Persistence
+
 The Scheduler connects to a **PostgreSQL** cluster for persistent record-keeping of jobs. The schema explicitly handles mapping a unified scheduled job to granular functional chunks. It records unoptimized variations to expose tangible ROI metrics for users.
 
 ```mermaid
@@ -373,8 +380,10 @@ erDiagram
     JOBS ||--o| TRIVIAL_IMPACTS : "produces baseline"
     IMPACTS ||--o{ BLOCKS : "consists of"
 ```
+
 /// caption
 Entity-Relationship diagram of the Scheduler's relational PostgreSQL schema.
 ///
 
 The fundamental atomic unit tracked across the pipeline is the **Workload Block**. It defines compute load spanning a specific 5-minute interval mapped to an explicit datacenter. The `Blocks` table unifies this to represent the overall schedule timeline dynamically evaluated by the algorithms.
+

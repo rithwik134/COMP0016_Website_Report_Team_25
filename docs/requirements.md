@@ -1,5 +1,10 @@
 # Requirements
+
+> [!DANGER]  
+> **NEED "PARTNER INTRODUCTION"**
+
 ---
+
 ### Project Background
 
 AI workloads (e.g., training large models, inference services) are resource-intensive and often deployed without sustainability considerations. As AI demand is rapidly rising, it becomes increasingly important we prioritise reducing carbon emissions for sustainable development of AI technologies. NTTData, as a Green Software Foundation (GSF) Steering Member, has been working towards providing a trusted ecosystem of people, standard, and tools for delivering green software.
@@ -10,6 +15,7 @@ As our client, NTTData assigned us the job of Investigating carbon‑aware sched
 
 The overarching goal is to reduce the environmental impact of AI workloads by optimising when and where they run, while keeping the system realistic for real‑world deployment.
 More specifically, the framework aims to:
+
 - Minimise emissions by selecting execution windows and locations with lower carbon intensity.
 - Enable carbon‑aware decisions using both forecasted and historical grid‑intensity data.
 - Take advantage of workload flexibility by breaking parallelisable jobs into short, schedulable blocks.
@@ -17,20 +23,24 @@ More specifically, the framework aims to:
 - Deliver an end‑to‑end system—covering prediction, scheduling, and results visualisation—that teams and organisations can adopt directly.
 
 ### Requirement Gathering
+
+> [!DANGER]  
+> be more explicit about the "requirement gathering methods"?
+
 We conducted a series of semi-structured interviews on potential users of the program to find the specific needs of our users.
 
 === "Autonomous Agent Developer"
-	**Question:** Would you say the disaster drone algorithms are built with sustainability in mind?<br>
-	**Answer:** No, usually the primary focus has always been on speed and reliability because these drones are used in life-saving situations like disaster response. Sustainability tends to take a back seat when performance is critical.
+ **Question:** Would you say the disaster drone algorithms are built with sustainability in mind?<br>
+ **Answer:** No, usually the primary focus has always been on speed and reliability because these drones are used in life-saving situations like disaster response. Sustainability tends to take a back seat when performance is critical.
 
-	**Question:** What challenges do you face in achieving sustainable practices while working on disaster drones?<br>
-	**Answer:** Sustainability isn’t always a priority in fast-paced tech environments. Disaster scenarios need low-latency, high-GPU workloads, so balancing performance with environmental goals is tough. Plus, there aren’t many tools that make this easy.
+ **Question:** What challenges do you face in achieving sustainable practices while working on disaster drones?<br>
+ **Answer:** Sustainability isn’t always a priority in fast-paced tech environments. Disaster scenarios need low-latency, high-GPU workloads, so balancing performance with environmental goals is tough. Plus, there aren’t many tools that make this easy.
 
-	**Question:** If you could design the perfect solution, what would it look like?<br>
-	**Answer:** I’d like a platform that helps me deploy workloads efficiently while showing real-time sustainability metrics-like carbon intensity and energy use. It would be ideal if I could see the impact and make informed choices without slowing down operations.
+ **Question:** If you could design the perfect solution, what would it look like?<br>
+ **Answer:** I’d like a platform that helps me deploy workloads efficiently while showing real-time sustainability metrics-like carbon intensity and energy use. It would be ideal if I could see the impact and make informed choices without slowing down operations.
 
-	**Question:** How do you personally measure success when balancing performance and sustainability?<br>
-	**Answer:** For me, success means it operates like usual, like low latency for disaster response, while reducing energy consumption and carbon emissions as much as possible. Even small improvements matter. If I can deploy workloads that use fewer resources without compromising performance, that’s a win. I also look for transparency, having clear metrics on energy use and emissions helps me make informed decisions and track progress over time.
+ **Question:** How do you personally measure success when balancing performance and sustainability?<br>
+ **Answer:** For me, success means it operates like usual, like low latency for disaster response, while reducing energy consumption and carbon emissions as much as possible. Even small improvements matter. If I can deploy workloads that use fewer resources without compromising performance, that’s a win. I also look for transparency, having clear metrics on energy use and emissions helps me make informed decisions and track progress over time.
 === "AI Researcher"
     **Question:** What motivates you to focus on sustainability in AI? <br>
     **Answer:** AI workloads are incredibly resource intensive, training large models can consume thousands of kilowatt hours. I believe we have a responsibility to make this process more efficient and environmentally conscious.
@@ -45,6 +55,7 @@ We conducted a series of semi-structured interviews on potential users of the pr
     **Answer:** Slowly, yes. There’s growing awareness, but use is uneven. We need more tools that make sustainability easy and measurable, so it becomes a natural part of AI development rather than something optional.
 
 ### Personas
+
 Using the data collected, we created personas and scenarios for our target users.
 
 ![Persona 1, Tim Jackson. Junior Devops Technician of Autonomous Drones Company](images/stats/persona-tim.png)
@@ -67,6 +78,7 @@ Based on the surveys, personas, and early design discussions, our team identifie
 Further conclusions are drawn in the MoSCoW requirements at the bottom of the page.
 
 ### Use Cases
+
 The use case diagram below illustrates how different users interact with the carbon‑aware scheduling system. It highlights the core actions available to users, including submitting AI workloads, adjusting datacentre availability, and reviewing both optimised and baseline schedules. These interactions reflect the system’s goal of making carbon‑aware decision‑making accessible and intuitive. By combining workload submission, carbon‑intensity forecasting, and visual comparison tools, the platform supports a smooth end‑to‑end experience that helps users understand and reduce the environmental impact of their AI operations.
 
 ![Use Case Diagram for carbon-aware Scheduler](images/use-case-diagram.png)
@@ -89,6 +101,7 @@ Below, you can see a list of use cases for our program:
 | UC9 | Configure Datacenters |
 
 #### Use Case Descriptions
+
 |  | **Use Case** |
 | --- | --- |
 | ID | UC1 |
@@ -179,8 +192,8 @@ Below, you can see a list of use cases for our program:
 | Result | User can modify which datacentres can run their job. |
 | Alternative Flows | - **Datacentres cannot be fetched:** Text is displayed that datacentres cannot be fetched from stats component and items are not rendered. System still allows the user to return back to the scheduling form. |
 
-
 ### MoSCoW Requirements
+
 #### Functional Requirements
 
 | ID | Requirement | Priority |
