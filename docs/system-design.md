@@ -346,44 +346,38 @@ This separation ensures the collector can write freely without contending with A
 
 ### 2. Scheduler Persistence
 
-The Scheduler connects to a **PostgreSQL** cluster for persistent record-keeping of jobs. The schema explicitly handles mapping a unified scheduled job to granular functional chunks. It records unoptimized variations to expose tangible ROI metrics for users.
+The Scheduler connects to a **PostgreSQL** cluster for persistent record-keeping. While the physical schema is normalized for the relational database, the semantic relationship centers on the concept of a **Scheduled Job** and its associated optimization plans.
 
 ```mermaid
 erDiagram
-    JOBS {
-        uuid id PK
-        string job_type
-        float workload_amount
-        datetime earliest_start
-        datetime latest_finish
+    ScheduledJob {
+        string id PK "Unique Schedule ID"
+        string job_type "Job Category"
+        float total_workload "Total Compute Units (FLO)"
     }
-    IMPACTS {
-        uuid id PK
-        uuid job_id FK
-        float total_carbon
-        float sci_score
+    Schedule {
+        string strategy "Optimized vs Baseline"
     }
-    BLOCKS {
-        uuid id PK
-        uuid impact_id FK
-        string location
-        datetime timestamp
-        float additional_load
+    EnvironmentalImpact {
+        float carbon_intensity "Avg. gCO2/kWh"
+        float total_emissions "Total gCO2"
+        float total_energy "Total kWh"
     }
-    TRIVIAL_IMPACTS {
-        uuid id PK
-        uuid job_id FK
-        float total_carbon
+    WorkloadBlock {
+        datetime timestamp "5-minute resolution"
+        string location "Datacenter ID"
+        float additional_load "Workload allocated to interval"
     }
 
-    JOBS ||--o| IMPACTS : "produces optimized"
-    JOBS ||--o| TRIVIAL_IMPACTS : "produces baseline"
-    IMPACTS ||--o{ BLOCKS : "consists of"
+    ScheduledJob ||--|| Schedule : "defines (optimized)"
+    ScheduledJob ||--o| Schedule : "defines (baseline comparison)"
+    Schedule ||--|| EnvironmentalImpact : "quantified by"
+    Schedule ||--o{ WorkloadBlock : "composed of"
 ```
 
 /// caption
-Entity-Relationship diagram of the Scheduler's relational PostgreSQL schema.
+Semantic Data Model showing the relationship between a high-level Job, its optimized/baseline schedules, and the atomic blocks that make them up.
 ///
 
-The fundamental atomic unit tracked across the pipeline is the **Workload Block**. It defines compute load spanning a specific 5-minute interval mapped to an explicit datacenter. The `Blocks` table unifies this to represent the overall schedule timeline dynamically evaluated by the algorithms.
+The fundamental atomic unit is the **Workload Block**, representing a 5-minute slice of compute time. A complete **Schedule** is formed by a collection of these blocks distributed across time and space (datacenters). Each schedule is measured by its **Environmental Impact**, allowing the user to compare the carbon footprint of the solver's optimal placement against a trivial baseline.
 
