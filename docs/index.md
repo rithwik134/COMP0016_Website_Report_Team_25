@@ -69,9 +69,11 @@ This upcoming presentation is not a mere dissemination of academic research. The
 
     ---
 
-    balls
+    ![Ali](images/ali.png)
 
-    [:octicons-mark-github-16: GitHub](https://github.com/akioweh)
+    Market Microstructure and Machine Learning Researcher
+
+    [:octicons-mark-github-16: GitHub](https://github.com/arjafree)
     [:octicons-link-external-16: Website](https://www.researchgate.net/profile/Ali-Raza-Jafree/research)
     [:octicons-mail-16: Contact](mailto:0@akioweh.com)
 
