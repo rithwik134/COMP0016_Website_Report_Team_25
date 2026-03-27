@@ -16,7 +16,7 @@ Pages you can navigate to through the scheduling form.
 4. Open the datacenter configuration page where the user can select which datacenters they want active during scheduling.
 
 #### Configuring Active Datacenters
-Once "Configure Data Centers" is clicked on the sheduling form (number 4 from Figure 1), the user is redirected to this page:
+Once "Configure Data Centers" is clicked on the scheduling form (number 4 from Figure 1), the user is redirected to this page:
 
 ![Config Datacenters](images/user-manual/datacenter-config.png)
 /// caption
@@ -29,11 +29,11 @@ Features of datacenter configuration page.
 5. "Save Configuration" persists active datacenters to be used for scheduling and redirects user back to Scheduling Form.
 
 #### Submitting a Job
-User can submit a job to get a schedule by filling in all inputs that allign with industry standard noted in the Scheduling form.
+User can submit a job to get a schedule by filling in all inputs that align with industry standard noted in the Scheduling form.
 
 ![Filling in Scheduling form](images/user-manual/filling-scheduling-form.png)
 /// caption
-Filling in sheduling form to submit a job.
+Filling in scheduling form to submit a job.
 ///
 1. User has to choose job type between: Training, Inference, and Batch
 2. User selects GPU Type. Currently, it presents a choice between: A100_SXM4 and V100_PCIE however the user can modify this through their own API.
@@ -56,7 +56,7 @@ Viewing Optimised schedule
 3. User can cancel the job, resulting in this schedule no longer being stored in the program.
 4. User can switch between Optimised and Unoptimised views to compare schedules and impact. More on this view below.
 5. User can navigate between each active datacenter to see its schedule. Any datacenter that the current job is scheduled in will be indicated in green to make it easier for the user to find.
-6. This shart shows information about the datacenter across the timeframe inputted by the user when scheduling the job. Each variable on the chart is labelled and displayed to make it easy for the user to observe the schedule and why the workload is placed where it is.
+6. This chart shows information about the datacenter across the timeframe inputted by the user when scheduling the job. Each variable on the chart is labelled and displayed to make it easy for the user to observe the schedule and why the workload is placed where it is.
 
 The unoptimised view gives a way for the user to see the trivial schedule which most workloads are executed using. This can be used to compare to our optimised one and can be seen below:
 
@@ -74,7 +74,7 @@ The user can also see all scheduled jobs across all active datacenters in the gl
 /// caption
 Global workload page, displays all scheduled jobs across active datacenters
 ///
-The user can see all scheduled jobs on each datacenter, being able to scroll between the timeframes of the earlies block of work scheduled to the latest one. These graphs use the same metrics as the ones showing a schedules result but includes a "Now" line that indictes the current time.
+The user can see all scheduled jobs on each datacenter, being able to scroll between the timeframes of the earliest block of work scheduled to the latest one. These graphs use the same metrics as the ones showing a schedule result but include a "Now" line that indicates the current time.
 
 #### View Previous Jobs
 Users are also given the option to see previous jobs they have run:
