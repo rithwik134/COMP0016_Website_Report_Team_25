@@ -1,9 +1,5 @@
 # Implementation
 
-> [!DANGER]  
-> signpost frameworks libraries used (explain why and **how** (do not storytell) they're used)  
-> ensure all core sub-components and features are included. this is not a selective demonstration but must show everything.
-
 This page details how the key features of the Carbon-Aware AI Agent were implemented, focusing on the technical translation from user requirements to algorithmic execution.
 
 ## `scheduler`
@@ -19,9 +15,9 @@ As documented in [System Design](system-design.md), the primary programmatic int
 
 We selected [Drogon](https://github.com/drogonframework/drogon) because of its mature coroutine ecosystem—one of the few C++ libraries to provide first-class support for modern asynchronous I/O. Our choice was driven by several project-specific needs:
 
-* **API Abstraction vs. Raw Networking**: While libraries such as `boost::asio` are excellent for general-purpose networking, Drogon's MVC structure allowed us to design a clean REST API using declarative routing and middleware, shielding our business logic from HTTP/1.1 protocol complexities.
-* **Integrated Persistence Layer**: We leveraged Drogon's coroutine-aware PostgreSQL ORM (`CoroMapper`) to persist calculated schedules. This integration allowed us to execute thousands of batch inserts into the `jobs` table asynchronously, ensuring the persistence layer remains as non-blocking as the optimization engine itself.
-* **Modern C++ Standards & Popularity**: Drogon's native support for C++20 allowed us to return `drogon::Task<T>` from our controllers, enabling us to `co_await` results from the `SchedulingQueue` without blocking the underlying event loop threads. As a widely used and mature framework, it provided a stable environment for implementing our critical backend services.
+- **API Abstraction vs. Raw Networking**: While libraries such as `boost::asio` are excellent for general-purpose networking, Drogon's MVC structure allowed us to design a clean REST API using declarative routing and middleware, shielding our business logic from HTTP/1.1 protocol complexities.
+- **Integrated Persistence Layer**: We leveraged Drogon's coroutine-aware PostgreSQL ORM (`CoroMapper`) to persist calculated schedules. This integration allowed us to execute thousands of batch inserts into the `jobs` table asynchronously, ensuring the persistence layer remains as non-blocking as the optimization engine itself.
+- **Modern C++ Standards & Popularity**: Drogon's native support for C++20 allowed us to return `drogon::Task<T>` from our controllers, enabling us to `co_await` results from the `SchedulingQueue` without blocking the underlying event loop threads. As a widely used and mature framework, it provided a stable environment for implementing our critical backend services.
 
 #### HTTP Controller
 
@@ -102,9 +98,9 @@ We resolved this by serializing individual scheduling computations through a **l
 
 While the optimization engine is compute-intensive, the overall scheduling workflow is a mix of I/O-bound data fetching and CPU-bound calculation. By implementing scheduling tasks as C++20 coroutines, we achieved several architectural goals:
 
-* **Cooperative Yielding**: Tasks can suspend during I/O boundaries (e.g., awaiting carbon forecasts or database snapshots), yielding the background thread to other queued tasks.
-* **Zero-Lock Serialization**: The queue ensures that while multiple tasks can be "in-flight" (suspended awaiting data), only one coroutine instance enters the critical DP computation at a time. This guarantees a stable resource snapshot without the overhead of global mutexes.
-* **Event Loop Integrity**: By offloading the queue to background worker threads, we ensure that 9-billion-transition optimizations never block the main HTTP event loop, preserving low-latency responses for other API endpoints.
+- **Cooperative Yielding**: Tasks can suspend during I/O boundaries (e.g., awaiting carbon forecasts or database snapshots), yielding the background thread to other queued tasks.
+- **Zero-Lock Serialization**: The queue ensures that while multiple tasks can be "in-flight" (suspended awaiting data), only one coroutine instance enters the critical DP computation at a time. This guarantees a stable resource snapshot without the overhead of global mutexes.
+- **Event Loop Integrity**: By offloading the queue to background worker threads, we ensure that 9-billion-transition optimizations never block the main HTTP event loop, preserving low-latency responses for other API endpoints.
 
 #### The Producer-Consumer Pattern
 
@@ -218,12 +214,16 @@ The engine core implements a custom Dynamic Programming (DP) algorithm designed 
 
 The scheduling problem is theoretically continuous, but we realize it as a deterministic state space by discretizing all physical quantities. We transform the requested workload into high-resolution discrete units (default 10,000 levels). This discretization is critical because the continuous version of the problem—resembling a non-linear knapsack problem with step-discontinuity penalties—is mathematically intractable \[1\]. By mapping the request to a discrete 2D grid of $m$ locations and $n$ time blocks, we ensure the global optimum is computationally reachable through Dynamic Programming transitions \[2\].
 
-To understand the scale of this task, we evaluate the exact upper-bound time complexity $\mathcal{O}\big(m \cdot W \cdot (n \cdot H_{max} + W)\big)$ under a typical "worst-case" request:
+To understand the scale of this task, we evaluate the exact upper-bound time complexity $\mathcal{O}\big(m \cdot W \cdot (n \cdot H_{steps} + W)\big)$, where $W$ is the discretization resolution, and $H_{steps}$ is the average available capacity in discrete units. Crucially, because our step size $e_{work} = W_f / W$ is proportional to the requested workload $W_f$, the discrete capacity limit is $H_{steps} = \min(W, \lfloor W \cdot H_{max} / W_f \rfloor)$, where $H_{max}$ is the physical capacity per block.
 
-* **Locations ($m = 5$)**: 5 UK regions.
-* **Time Blocks ($n = 1728$)**: A 6-day (144-hour) horizon at 5-minute intervals.
-* **Workload ($W = 10,000$)**: High-resolution discretization for large training jobs.
-* **Block Capacity ($H_{max} \approx 100$)**: Maximum throughput per 5-minute window.
+This design introduces a counter-intuitive but significant performance benefit: computational complexity is inversely proportional to workload size. As the task magnitude grows, each 5-minute window can satisfy a smaller fraction of the total requirement, effectively shrinking the transition search space in the DP hot-path. Conversely, the absolute peak complexity occurs when the workload is comparable to the physical capacity of a single block ($W_f \approx H_{max}$), as $H_{steps}$ reaches its upper bound $W$, forcing the engine to explore all possible allocation combinations per block.
+
+We evaluate the operations under a typical request:
+
+- **Locations ($m = 5$)**: 5 UK regions.
+- **Time Blocks ($n = 1728$)**: A 6-day (144-hour) horizon at 5-minute intervals.
+- **Resolution ($W = 10,000$)**: Constant discretization levels.
+- **Discrete Step Limit ($H_{steps} \approx 100$)**: Typical for workloads ~100x larger than a single block's capacity.
 
 Plugging these bounds into the formula yields roughly $8.6 \times 10^9$ operations for the temporal phase. A standard scalar execution processing over **9 billion state transitions** would stall the UI for multiple seconds, defeating the goal of a real-time, interactive dashboard.
 
@@ -274,9 +274,9 @@ These metrics directly dictated the sequence of our refactoring efforts: removin
 
 We eliminated the latencies identified during profiling through targeted instruction-level engineering, focusing on the `calc_single` hot-path:
 
-* **Hot-Path Refinement (Removing Allocations)**: We eliminated allocator overhead by removing all dynamic memory allocations from the hot-path. DP tables are pre-allocated once using aligned memory and reused across transitions, removing the **22%** `operator new` cost and associated `vector` reallocations. Additionally, we replaced expensive `std::unordered_map` cost lookups with constant-time memory indexing.
-* **Flattening Memory Structures (SoA)**: We refactored memoization tables from an **Array of Structs (AoS)** to **Struct of Arrays (SoA)**. By grouping fields (such as `costs` and `parents`) into contiguous memory, we reduced L1 cache misses by **~25%**, as the CPU no longer loads irrelevant reconstruction metadata (parents) during the primary cost-update cycles.
-* **SIMD Vectorization & Branchless Logic**: To improve instruction throughput, we manually vectorized the innermost DP transition loop using **AVX2 and AVX512 intrinsics**. By leveraging the non-decreasing nature of our cost function, we implemented branchless logic that allows the CPU to process 8 floating-point states per instruction cycle.
+- **Hot-Path Refinement (Removing Allocations)**: We eliminated allocator overhead by removing all dynamic memory allocations from the hot-path. DP tables are pre-allocated once using aligned memory and reused across transitions, removing the **22%** `operator new` cost and associated `vector` reallocations. Additionally, we replaced expensive `std::unordered_map` cost lookups with constant-time memory indexing.
+- **Flattening Memory Structures (SoA)**: We refactored memoization tables from an **Array of Structs (AoS)** to **Struct of Arrays (SoA)**. By grouping fields (such as `costs` and `parents`) into contiguous memory, we reduced L1 cache misses by **~25%**, as the CPU no longer loads irrelevant reconstruction metadata (parents) during the primary cost-update cycles.
+- **SIMD Vectorization & Branchless Logic**: To improve instruction throughput, we manually vectorized the innermost DP transition loop using **AVX2 and AVX512 intrinsics**. By leveraging the non-decreasing nature of our cost function, we implemented branchless logic that allows the CPU to process 8 floating-point states per instruction cycle.
 
 ```cpp
 // SIMD vectorized transition: 8 floating-point ops per cycle
@@ -292,18 +292,17 @@ if (mmask) {
 }
 ```
 
-* **Aligned Allocation**: We utilized `boost::alignment::aligned_allocator` to ensure DP vectors are boundary-aligned with the 64-byte width of AVX512 registers, avoiding the performance penalties of unaligned memory access.
+- **Aligned Allocation**: We utilized `boost::alignment::aligned_allocator` to ensure DP vectors are boundary-aligned with the 64-byte width of AVX512 registers, avoiding the performance penalties of unaligned memory access.
 
-The combined impact of these optimizations can be seen in the improved instruction throughput and eliminated memory overhead:
-
-[**Open Interactive Flame Graph — Optimized Implementation (After Optimization)**](images/benchmarks/flamegraph_after.svg){ target="_blank" }
+The combined impact of these optimizations can be seen in the improved instruction throughput and eliminated memory overhead.
+A detailed analysis is presented in the [Evaluation](evaluation.md) page.
 
 #### Parallel Execution Strategy
 
 The scheduler's two-phase design was specifically architected to minimize synchronization overhead by isolating independent computation blocks. We performed a **data dependency chain analysis** to identify opportunities for concurrent execution:
 
-* **Regional Independence**: Each instance of `calc_single()` operates on a strictly local dataset (one datacenter's load, capacity, and carbon forecasts). Because these computations share no mutable state, they are "embarrassingly parallel." We utilize `std::async` to trigger regional solvers concurrently, achieving near-linear speedup relative to the number of data centers.
-* **Row-Wise Spatial Parallelism**: In the spatial (multi-region) phase, we identified that while updates to a single DP state $dp[w]$ depend on the previous regional row, updates _across_ different workload levels $w$ within the same row are independent. This allows us to parallelize the inner-loop updates across the workload dimension $W$ (10,000 discrete levels).
+- **Regional Independence**: Each instance of `calc_single()` operates on a strictly local dataset (one datacenter's load, capacity, and carbon forecasts). Because these computations share no mutable state, they are "embarrassingly parallel." We utilize `std::async` to trigger regional solvers concurrently, achieving near-linear speedup relative to the number of data centers.
+- **Row-Wise Spatial Parallelism**: In the spatial (multi-region) phase, we identified that while updates to a single DP state $dp[w]$ depend on the previous regional row, updates _across_ different workload levels $w$ within the same row are independent. This allows us to parallelize the inner-loop updates across the workload dimension $W$ (10,000 discrete levels).
 
 We implemented these patterns using modern C++ **execution policies** (`std::execution::par_unseq`):
 
@@ -325,13 +324,15 @@ By leveraging `std::execution`, we realized several engineering benefits:
 
 This approach reduces manual data-flow management and ensures that the merge phase scales effectively with high discretization resolutions.
 
-### 5. Persistence & Global State (`Calendar`)
+### 5. Persistence & Coroutine ORM
 
-After the engine computes the optimal workload distribution, the results must be persisted to provide a consistent view of future resource availability. We utilize a PostgreSQL database as the authoritative source of "Infrastructure State." The `Calendar` sub-system manages all interactions with the backend, ensuring that every scheduling decision is backed by a persistent resource reservation.
+After the engine computes the optimal workload distribution, the system persists calculated schedules, data center capacity constraints, and carbon impacts into a **PostgreSQL** database. All database interactions are fully asynchronous and utilize Drogon's built-in Coroutine ORM alongside raw SQL queries for complex analytics.
 
-#### The Data Mapper Pattern
+#### Code-Generated Models & DTO Mapping
 
-To maintain a clean separation of concerns, the core scheduling engine operates purely on `InternalBlock` aggregate types—lightweight structs devoid of database IDs or persistence logic. We implemented a **Data Mapper layer** in the `mappers` namespace to handle transformations between internal domain objects and Drogon ORM models.
+To represent the database schema in C++, we use `drogon_ctl` to auto-generate ORM model classes (e.g., `Jobs`, `Impacts`, `TrivialJobs`). However, to prevent these database-specific models—and their associated `trantor` time libraries—from leaking into the core scheduling logic, we implemented a strict Data Transfer Object (DTO) mapping layer.
+
+The `scheduler::mappers` namespace houses symmetric `f_toDto` and `f_fromDto` functions. Leveraging C++20 ranges (`std::views::transform`) and function objects (`ToDtoFn`, `FromDtoFn`), arrays of internal domain objects (like `InternalBlock`) are elegantly projected into Drogon ORM models right before persistence, and vice versa upon retrieval.
 
 ```cpp
 // Transform internal blocks into database-ready models using ranges
@@ -340,13 +341,26 @@ for (auto&& jobModel : output.blocks | views::transform(mappers::toDto.withImpac
 }
 ```
 
-This decoupling allowed us to iterate on the optimization algorithm independently of the database schema, ensuring that persistence logic never leaked into the mathematical solver.
+#### Transactional Integrity and High-Throughput Batching
 
-#### Transactional Integrity
+Persisting a completed schedule involves writing a parent summary (the carbon impact) and potentially thousands of individual 5-minute execution blocks across multiple data centers. To guarantee ACID properties without blocking the server’s main event loop, we utilize `newTransactionCoro()`.
 
-We leveraged Drogon's asynchronous transaction API (`newTransactionCoro()`) to ensure the integrity of our multi-table persistence. When a job is accepted, the system must write both a high-level `ImpactModel` and thousands of individual 5-minute `JobModel` execution blocks.
+- **Asynchronous Batching**: For the high-resolution `Jobs` table, we utilize asynchronous batch inserts within the active transaction. By collapsing thousands of individual rows into a single multi-row SQL execution plan, we significantly reduce the overhead of the PostgreSQL query parser and eliminate the latency of multiple network round-trips. This ensures that even the most complex 7-day schedules are persisted with minimal I/O wait times.
 
-By executing these inside an atomic transaction, we guarantee that no "orphaned" impacts are created if a network failure occurs mid-write. This ACID-compliant approach maintains the consistency of the global capacity snapshot used by subsequent scheduling requests.
+- **Type-Safe Persistence with CoroMapper**: Queries and inserts are executed using `drogon::orm::CoroMapper<T>`, instantiated with the asynchronous transaction context. The ORM facilitates type-safe interaction by combining `drogon::orm::Criteria` objects. For example, filtering historical schedules by a specific data center and time frame is achieved by logically chaining criteria (e.g., `CompareOperator::GE` for start times) and passing them into `mapper.findBy()`.
+
+```cpp
+auto fullCriteria = combineCriteria(
+    jobTimestampAfterStartCriteria(start),
+    jobTimestampBeforeEndCriteria(end),
+    specificDatacenterCriteria(datacenter)
+);
+auto models = co_await context.jobsMapper.findBy(fullCriteria);
+```
+
+#### Raw Asynchronous SQL
+
+While the `CoroMapper` handles standard CRUD operations excellently, certain UI features—such as the dashboard's historical schedule summaries—require complex relational aggregations (e.g., `array_agg(DISTINCT j.location_id)`) that exceed the capabilities of the ORM. For these scenarios, the data access layer (in `Calendar.cpp`) falls back to `execSqlCoro`, executing raw SQL against the PostgreSQL instance asynchronously and mapping the generic result sets back into domain summaries.
 
 #### Comparative Evaluation
 
@@ -446,7 +460,7 @@ void complete_one() {
 }
 ```
 
-* **Suspension Bypassing**: We implemented an atomic `continuation` state to handle "fast-path" cases where all children finish before the parent coroutine can even suspend. In these instances, the parent detects the `WAITING_CONTINUATION` state and bypasses the suspension overhead entirely.
+- **Suspension Bypassing**: We implemented an atomic `continuation` state to handle "fast-path" cases where all children finish before the parent coroutine can even suspend. In these instances, the parent detects the `WAITING_CONTINUATION` state and bypasses the suspension overhead entirely.
 
 #### Generic Metaprogramming
 
@@ -487,16 +501,16 @@ The service uses **two SQLite databases** with distinct responsibilities:
 
 **`carbon_intensity.db`** — the collector-managed raw store:
 
-* Populated by the Carbon Collector thread, which calls the UK Carbon Intensity API every 30 minutes
-* On first startup, performs a **365-day backfill** to provide sufficient training history
-* Stores raw readings (`carbon_readings`), region metadata (`regions`), and fuel-type generation mix (`generation_mix`)
+- Populated by the Carbon Collector thread, which calls the UK Carbon Intensity API every 30 minutes
+- On first startup, performs a **365-day backfill** to provide sufficient training history
+- Stores raw readings (`carbon_readings`), region metadata (`regions`), and fuel-type generation mix (`generation_mix`)
 
 **`cache.db`** — the serving database:
 
-* `historical_data` — 30-minute carbon intensity readings, bulk-synced from `carbon_intensity.db` by the Carbon Sync thread
-* `predictions` — JSON-serialized forecasts with TTL-based expiry (40 minutes), written by the Prediction Loop and read by API handlers
-* `historical_cache` — pre-upsampled 5-minute data for the trailing 7 days, so API responses can stitch historical observations with forecast data without recomputing on every request
-* `datacenters` — registry of all 14 UK data centers with active/inactive state, coordinates, and region mapping
+- `historical_data` — 30-minute carbon intensity readings, bulk-synced from `carbon_intensity.db` by the Carbon Sync thread
+- `predictions` — JSON-serialized forecasts with TTL-based expiry (40 minutes), written by the Prediction Loop and read by API handlers
+- `historical_cache` — pre-upsampled 5-minute data for the trailing 7 days, so API responses can stitch historical observations with forecast data without recomputing on every request
+- `datacenters` — registry of all 14 UK data centers with active/inactive state, coordinates, and region mapping
 
 The separation exists so the collector can write freely without contending with API read traffic, and so the serving layer has a self-contained database it can query without touching the collector's write path.
 
@@ -562,18 +576,18 @@ Each training sample is described by **65 engineered features** drawn from five 
 
 **1. Temporal Features (22 features)** — Fourier-encoded cyclical time signals that capture periodic patterns in carbon intensity:
 
-* 12 features for **hour-of-day**: $\sin$ and $\cos$ at harmonics $k = 1, \ldots, 6$ of $\frac{2\pi \cdot \text{hour}}{24}$. Higher harmonics capture sharper intra-day patterns (e.g., the evening peak) that a single sine wave would smooth over.
-* 4 features for **day-of-week**: $\sin$ and $\cos$ at harmonics $k = 1, 2$ of $\frac{2\pi \cdot \text{dow}}{7}$. Captures the weekday/weekend demand cycle.
-* 4 features for **day-of-year**: $\sin$ and $\cos$ at harmonics $k = 1, 2$ of $\frac{2\pi \cdot \text{doy}}{365.25}$. Captures seasonal variation (e.g., higher gas generation in winter).
-* 1 **weekend flag**: binary indicator for Saturday/Sunday.
-* 1 **night flag**: binary indicator for hours outside 06:00–22:00.
+- 12 features for **hour-of-day**: $\sin$ and $\cos$ at harmonics $k = 1, \ldots, 6$ of $\frac{2\pi \cdot \text{hour}}{24}$. Higher harmonics capture sharper intra-day patterns (e.g., the evening peak) that a single sine wave would smooth over.
+- 4 features for **day-of-week**: $\sin$ and $\cos$ at harmonics $k = 1, 2$ of $\frac{2\pi \cdot \text{dow}}{7}$. Captures the weekday/weekend demand cycle.
+- 4 features for **day-of-year**: $\sin$ and $\cos$ at harmonics $k = 1, 2$ of $\frac{2\pi \cdot \text{doy}}{365.25}$. Captures seasonal variation (e.g., higher gas generation in winter).
+- 1 **weekend flag**: binary indicator for Saturday/Sunday.
+- 1 **night flag**: binary indicator for hours outside 06:00–22:00.
 
 **2. Horizon Encoding (4 features)** — Tells the model how far into the future it is predicting:
 
-* $h_{\text{norm}} = h / 336$ (linear)
-* $h_{\text{norm}}^2$ (quadratic)
-* $h_{\text{norm}}^3$ (cubic)
-* $\log(1 + h) / \log(337)$ (logarithmic)
+- $h_{\text{norm}} = h / 336$ (linear)
+- $h_{\text{norm}}^2$ (quadratic)
+- $h_{\text{norm}}^3$ (cubic)
+- $\log(1 + h) / \log(337)$ (logarithmic)
 
 The polynomial and logarithmic encodings allow the model to learn non-linear degradation of prediction confidence with increasing horizon.
 
@@ -593,26 +607,26 @@ These features give the model a rich characterisation of "where the series is ri
 
 **4. Weather Features (16 features)** — Retrieved from Open-Meteo and aligned to the target timestamp:
 
-* 9 raw measurements: temperature, relative humidity, dewpoint, pressure, cloud cover, wind speed, wind gusts, solar radiation, precipitation
-* Wind direction encoded as $\sin$ and $\cos$ components (avoids the 359°→0° discontinuity)
-* 5 engineered derivatives:
-  * **Wind power** ($\text{speed}^3 / 1000$) — proxy for wind generation potential (power scales cubically with speed)
-  * **Wind ramp** (first difference of speed) — captures sudden changes in wind generation
-  * **Pressure change** (first difference) — indicates incoming weather fronts
-  * **Solar clearness** (radiation / 1000) — normalised solar availability
-  * **Temperature deviation** (current temp minus 7-day rolling mean) — captures unusual temperature events
+- 9 raw measurements: temperature, relative humidity, dewpoint, pressure, cloud cover, wind speed, wind gusts, solar radiation, precipitation
+- Wind direction encoded as $\sin$ and $\cos$ components (avoids the 359°→0° discontinuity)
+- 5 engineered derivatives:
+  - **Wind power** ($\text{speed}^3 / 1000$) — proxy for wind generation potential (power scales cubically with speed)
+  - **Wind ramp** (first difference of speed) — captures sudden changes in wind generation
+  - **Pressure change** (first difference) — indicates incoming weather fronts
+  - **Solar clearness** (radiation / 1000) — normalised solar availability
+  - **Temperature deviation** (current temp minus 7-day rolling mean) — captures unusual temperature events
 
 Weather data is fetched from the Open-Meteo Archive API for training and the Open-Meteo Forecast API for inference, then resampled from hourly to 30-minute resolution via linear interpolation. Historical weather is cached to disk (as pickled DataFrames) to avoid redundant API calls.
 
 **5. Interaction Terms (10 features)** — Cross-products between feature groups that capture conditional relationships:
 
-* `last_value × horizon` — how the current level modulates forecast uncertainty at distance
-* `weekend × hour_sin`, `weekend × hour_cos` — weekend-specific daily patterns
-* `hour_sin × wind_speed`, `hour_cos × wind_speed` — time-dependent wind effects
-* `hour_sin × solar`, `hour_cos × solar` — time-dependent solar effects
-* `wind_speed × solar` — combined renewable generation signal
-* `temperature × hour_sin` — temperature-dependent demand patterns
-* `last_value × wind_speed` — current carbon level modulated by wind availability
+- `last_value × horizon` — how the current level modulates forecast uncertainty at distance
+- `weekend × hour_sin`, `weekend × hour_cos` — weekend-specific daily patterns
+- `hour_sin × wind_speed`, `hour_cos × wind_speed` — time-dependent wind effects
+- `hour_sin × solar`, `hour_cos × solar` — time-dependent solar effects
+- `wind_speed × solar` — combined renewable generation signal
+- `temperature × hour_sin` — temperature-dependent demand patterns
+- `last_value × wind_speed` — current carbon level modulated by wind availability
 
 #### Training & Inference
 
@@ -635,6 +649,26 @@ The Stats service exposes the following endpoints, consumed by the C++ Scheduler
 
 Forecast endpoints accept optional `start_time` and `end_time` query parameters (ISO 8601). Responses stitch together historical observations (`is_forecast: false`) with predicted values (`is_forecast: true`), giving the Scheduler and UI a seamless time series across the boundary.
 
+## `ui` (Next.js Dashboard)
+
+The frontend is a **Next.js** application that serves as the command-and-control interface for the Carbon-Aware Agent. It provides AI engineers with tools to simulate workloads, visualize carbon forecasts, and review optimized schedules.
+
+### Framework & Architectural Choices
+
+We selected **Next.js 14** with the **App Router** to implement a hybrid rendering strategy that optimizes perceived performance and data consistency:
+
+- **React Server Components (RSC)**: We utilized RSC for the initial page shell and static layout elements. By shifting non-interactive logic to the server, we reduced the JavaScript payload delivered to the client while ensuring that metadata and initial state are available before the first byte of hydration.
+- **Client Components for Interactivity**: The core dashboard is implemented as a Client Component to support stateful interactions, such as real-time workload parameter adjustments and dynamic chart zooming. This separation ensures that the main thread is reserved for UI responsiveness rather than layout processing.
+- **API Route Handlers (BFF)**: We implemented a **Backend-for-Frontend (BFF)** pattern using Next.js Route Handlers. This layer acts as a proxy that unifies the disparate C++ Scheduler and Python Stats service APIs, providing the frontend with a single, type-safe entry point and eliminating Cross-Origin Resource Sharing (CORS) complexities during deployment.
+
+### Visualization & Data Density
+
+The primary challenge in the UI was the visualization of 7-day high-resolution (5-minute) forecasts, totaling 2,016 data points per series.
+
+- **Recharts Integration**: We opted for [Recharts](https://recharts.org/) because of its declarative React integration and efficient SVG rendering. We developed a custom `ForecastChart` component that dynamically stitches historical intensity (solid lines) with predicted forecasts (dashed lines) retrieved from the Stats service.
+- **Carbon Offset Visualization**: To visualize the impact of our optimization, the UI overlays the "Carbon-Aware" schedule against the "Trivial" baseline on a shared temporal axis. We utilize area-fill gradients to represent the **Carbon Offset Area**— the integral of the intensity difference—providing users with a direct visual metric of emissions saved.
+- **Responsive Downsampling**: To maintain 60 FPS performance when rendering thousands of data points, we implemented a viewport-aware downsampling strategy. The "Overview" thumbnail uses a simplified version of the **Largest-Triangle-Three-Buckets (LTTB)** algorithm \[6\] to preserve visual trends with minimal points, while the main interactive view renders full-resolution data.
+
 ## References
 
 \[1\] S. Martello and P. Toth, _Knapsack Problems: Algorithms and Computer Implementations_. Chichester, UK: John Wiley & Sons, 1990.  
@@ -642,3 +676,4 @@ Forecast endpoints accept optional `start_time` and `end_time` query parameters 
 \[3\] A. E. Hoerl and R. W. Kennard, "Ridge Regression: Biased Estimation for Nonorthogonal Problems," _Technometrics_, vol. 12, no. 1, pp. 55-67, 1970.  
 \[4\] A. Radovanovic et al., "Advancing Carbon-Aware Data Centers," Google, Tech. Rep., 2021.  
 \[5\] Green Software Foundation, "Software Carbon Intensity (SCI) Standard," v1.0, 2022.  
+\[6\] T. Steinarsson, "Downsampling Time Series for Visual Representation," Master's thesis, University of Iceland, 2013.  
