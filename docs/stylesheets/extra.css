@@ -68,7 +68,7 @@ code, pre {
 /* Ensure the horizontal scrollbar for tabs is always visible */
 .md-tabs__list {
   scrollbar-width: thin;
-  scrollbar-color: var(--md-accent-fg-color) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
   overflow-x: scroll !important;
   padding-bottom: 2px; /* Add a tiny bit of space for the scrollbar */
 }
@@ -79,7 +79,7 @@ code, pre {
 }
 
 .md-tabs__list::-webkit-scrollbar-thumb {
-  background-color: var(--md-accent-fg-color);
+  background-color: rgba(255, 255, 255, 0.3);
   border-radius: 4px;
 }
 

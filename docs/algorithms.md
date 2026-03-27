@@ -1,8 +1,5 @@
 # Algorithms
 
-> [!DANGER]  
-> need references
-
 The core of the Carbon-Aware AI Agent is its **Spatio-Temporal Scheduler**, a high-performance C++ engine that solves a complex resource allocation problem to minimize the carbon footprint of AI workloads. To make the system accessible to AI engineers, the scheduler translates "natural" hardware specifications into the mathematical units serving as data to the DP engine, ensuring the final cost reflects real-world carbon emissions.
 
 ---
@@ -104,12 +101,13 @@ By combining Phase 1 and Phase 2, the exact upper-bound time complexity for the 
 $$ \mathcal{O}\big(m \cdot W \cdot (n \cdot H_{max} + W)\big) $$
 
 #### The Resolution Inversion
-A unique property of this discretization strategy is the Inverse Scaling of Latency - the algorithm scales inversely with the size of the physical workload ($T_{work}$). 
+
+A unique property of this discretization strategy is the Inverse Scaling of Latency - the algorithm scales inversely with the size of the physical workload ($T_{work}$).
 
 Firstly, let's define the discretization constant (resolution) of our algorithm as $R$.
-Then, let the size of a single discrete work unit be defined as $e_{work} = \frac{T_{work}}{R}$. 
+Then, let the size of a single discrete work unit be defined as $e_{work} = \frac{T_{work}}{R}$.
 Then $$ W = \frac{T_{work}}{e_{work}} = \frac{T_{work} \cdot R}{T_{work}} = R $$ Thus, after the discretization the workload amount is fixed.
-The discrete search space per time block, $H_{max}$, is dictated by the physical capacity divided by the unit size: 
+The discrete search space per time block, $H_{max}$, is dictated by the physical capacity divided by the unit size:
 $$ H_{max} = \frac{\text{Capacity}}{e_{work}} = \frac{\text{Capacity} \cdot R}{T_{work}} $$
 
 If we substitute $W = R$ and this definition of $H_{max}$ into the standard Phase 1 complexity of $\mathcal{O}(n \cdot W \cdot H_{max})$, the real computational complexity for the temporal optimization becomes:
@@ -118,11 +116,12 @@ $$ \mathcal{O}\left( \frac{n \cdot R^2 \cdot \text{Capacity}}{T_{work}} \right) 
 Consequently, as the physical workload ($T_{work}$) increases, the number of discrete allocation choices per time block actually decreases. This results in an algorithm that executes faster as the problem size scales, reaching its computational peak when the workload is largest.
 
 #### The Performance Floor
+
 While Phase 1 complexity scales inversely with workload, the system maintains a deterministic performance floor defined by Phase 2 (Spatial Routing). Because the resolution is fixed at $W = R$, the complexity of Phase 2 becomes $\mathcal{O}(m \cdot R^2)$. Since Phase 2 is bounded by this fixed resolution, its execution time remains constant regardless of the physical job size, acting as the primary bottleneck for massive, global-scale AI workloads. Both the inverse latency and plateau as workload increases is clearly visible on [this graph.](images/benchmarks/performance_comparison.png)
 
-
 ## Conclusion: Maneuverability vs. Resolution
-There is an inherent trade-off between execution speed and scheduling maneuverability. As physical workload ($T_{work}$) increases, the step size of each discrete unit grows, slightly reducing the scheduler’s ability to precisely maneuver the workload into small, marginal carbon-intensity fluctuations. 
+
+There is an inherent trade-off between execution speed and scheduling maneuverability. As physical workload ($T_{work}$) increases, the step size of each discrete unit grows, slightly reducing the scheduler’s ability to precisely maneuver the workload into small, marginal carbon-intensity fluctuations.
 
 However, for astronomically large AI workloads, these "maneuverability" losses are statistically negligible. Furthermore, because maneuverability is strictly correlated with the Resolution ($R$), the system can be arbitrarily scaled to maintain high precision for any workload size, provided the underlying hardware supports the corresponding increase in the $\mathcal{O}(R^2)$ memory and compute requirements.
 
@@ -137,5 +136,5 @@ The forecasting algorithm is what serves carbon intensity predictions to the sch
 ### References
 
 [1] Green Software Foundation, "Carbon Aware SDK Documentation," GitHub, 2023. [Online]. Available: [https://github.com/Green-Software-Foundation/carbon-aware-sdk](https://github.com/Green-Software-Foundation/carbon-aware-sdk). [Accessed: Mar. 2026].<br>
-[2] A. E. Hoerl and R. W. Kennard, "Ridge regression: Biased estimation for nonorthogonal problems," *Technometrics*, vol. 12, no. 1, pp. 55–67, Feb. 1970, doi: [10.1080/00401706.1970.10488634](https://doi.org/10.1080/00401706.1970.10488634).
+[2] A. E. Hoerl and R. W. Kennard, "Ridge regression: Biased estimation for nonorthogonal problems," *Technometrics*, vol. 12, no. 1, pp. 55–67, Feb. 1970, doi: [10.1080/00401706.1970.10488634](https://doi.org/10.1080/00401706.1970.10488634)
 ---
