@@ -4,7 +4,7 @@ Complete experimental results from the carbon intensity forecasting model develo
 
 > **Final production model: RidgeFull (Enhanced Direct-Ridge) -- AVG MAE 24.88.** A 24.6% improvement over the previous production model (Direct-Ridge, MAE 32.99), achieved through feature engineering (14 -> 65 features), full historical data, and StandardScaler preprocessing.
 
-## 1. Introduction
+## Introduction
 
 ### Problem Statement
 
@@ -15,21 +15,23 @@ Forecast UK regional carbon intensity 7 days ahead at 30-minute intervals (336 s
 - **Source**: UK Carbon Intensity API
 - **Regions**: London, North East England, North West England, South East England, South Yorkshire
 - **Interval**: 30 minutes
-- **Baseline period**: 2025-12-06 to 2026-03-06 (91 days, 21,525 readings)
-- **Seasonal period**: ~1 year of historical data
-- **Exogenous features**: Open-Meteo weather (wind speed 10m, temperature 2m, solar radiation) -- lag-1 shifted
+- **Baseline period**: 6 December 2025 → 6 March 2026 (91 days, 21,525 readings)
+- **Seasonal period**: Approximately one year of historical carbon‑intensity data
+- **Exogenous features**: Weather variables from Open‑Meteo (10 m wind speed, 2 m temperature, solar radiation), each shifted by one time step to avoid leakage
 
 ### Evaluation Setup
 
 - **Test set**: Last 7 days (336 points per region)
-- **Training windows**: 7-day (336 points) and full backfill (~83 days / ~3,972 points for baseline; ~365 days for seasonal)
+- **Training windows**: 
+    - A **short 7‑day window** (336 points)
+    - A **full backfill window** (~83 days / ~3,972 points for baseline models; ~365 days for seasonal models)
 - **Primary metric**: MAE (mean absolute error), averaged across 5 regions
-- **Secondary metrics**: RMSE, R^2, Ljung-Box p-value, max ACF of residuals
+- **Secondary metrics**: RMSE, R², Ljung–Box p‑values, and the maximum residual autocorrelation (ACF)
 - **Forecasting approaches**:
-    - *Recursive*: predict one step, feed prediction back as input, repeat 336 times
-    - *Direct*: train one model per horizon step (or single model with horizon feature)
+    - *Recursive*: predict one step ahead, feed prediction back as input, repeat 336 times
+    - *Direct*: train a separate model for each horizon (or use a single model with the horizon encoded as a feature)
 
-## 2. Data Analysis
+## Data Analysis
 
 ### Regional Characteristics
 
@@ -43,9 +45,13 @@ Forecast UK regional carbon intensity 7 days ahead at 30-minute intervals (336 s
 
 ### Key Patterns
 
-- **Two regime groups**: Southern/London regions (high mean ~145--164, moderate CV) vs Northern regions (low mean ~47--52, high CV 0.75--0.88). Northern regions are wind-dominated and harder to predict.
-- **Outliers**: North East has 83 readings beyond 3-sigma; other regions have <10.
-- **Weekly patterns** vary by region -- strong in wind-dominated North, weaker in gas-heavy South.
+- **Two disctinct regime groups** 
+    - **Southern and London regions** show higher average carbon intensity (≈145–164) with moderate variability.
+    - **Northern regions** sit much lower (≈47–52) but with much higher relative variability (CV 0.75–0.88), reflecting their stronger dependence on wind generation and thus harder to predict.
+- **Outliers**: North East has 83 readings beyond 3-sigma; other regions have less than 10.
+- **Weekly cycles** differ noticeably by region:
+    - Wind‑dominated northern areas show **clear, strong weekly structure.**
+    - Gas‑heavy southern regions display **weaker or more muted weekly patterns.**
 
 ### Visualisations
 
@@ -69,31 +75,46 @@ STL decomposition: trend, seasonal, and residual components per region.
 Weekly variance patterns across regions.
 ///
 
-## 3. Phase 1: Baseline Benchmark (18 Models)
+## Phase 1: Baseline Benchmark (18 Models)
 
-Full 18-model comparison across statistical, tree-based, deep learning, and foundation model approaches.
+A full comparison of 18 forecasting models across statistical, tree-based, deep learning, and foundation model approaches.
 
 ### Model Categories
 
-**Statistical**: Ridge, SARIMAX, ARIMA(d=1), Seasonal Naive, Fourier, Holt-Winters
+**Statistical models**:  
+Ridge, SARIMAX, ARIMA(d=1), Seasonal Naive, Fourier, Holt-Winters
 
-**Tree-based (recursive)**: Random Forest, XGBoost, CatBoost, LightGBM
+**Tree-based (recursive)**:  
+Random Forest, XGBoost, CatBoost, LightGBM
 
-**Tree-based (direct)**: Direct-Ridge, Direct-XGBoost
+**Tree-based (direct)**:  
+Direct-Ridge, Direct-XGBoost
 
-**Deep learning**: Transformer-1K/5K/10K (varying training epochs), N-BEATS, N-HiTS
+**Deep learning models**:  
+Transformer-1K/5K/10K (varying training epochs), N-BEATS, N-HiTS
 
-**Foundation model**: Chronos-Tiny (zero-shot)
+**Foundation model**:  
+Chronos-Tiny (zero-shot)
 
 ### Feature Engineering
 
-**Recursive tree models** (60 features): 6 cyclical (hour/dow/minute sin/cos), 48 lags (lag_1--48), 3 rolling stats (mean_12, mean_48, std_48), 3 weather (wind, temp, solar).
+**Recursive tree models** use a **60‑feature** input vector consisting of:
 
-**Direct models** (14 features): 6 cyclical, 2 horizon (h/336, (h/336)^2), 3 origin summary (last_value, mean_48, std_48), 3 weather.
+- **6 cyclical time features** (hour, day‑of‑week, minute encoded as sin/cos)  
+- **48 lag features** (lag‑1 through lag‑48)  
+- **3 rolling statistics** (mean‑12, mean‑48, std‑48)  
+- **3 weather variables** (wind speed, temperature, solar radiation)  
+
+**Direct forecasting models** use a more compact **14‑feature** design:
+
+- **6 cyclical time features**  
+- **2 horizon features** (h/336 and (h/336)²)  
+- **3 origin‑state summaries** (last value, mean‑48, std‑48)  
+- **3 weather variables**  
 
 ### Results: 7-Day Training Window
 
-| Model | MAE | RMSE | R^2 | Time (s) |
+| Model | MAE | RMSE | R² | Time (s) |
 | --------------- | ----- | ------ | ------ | -------- |
 | Ridge | 36.26 | 46.00 | 0.211 | 0.00 |
 | Transformer-10K | 40.28 | 52.41 | -0.066 | 0.39 |
@@ -114,7 +135,7 @@ Full 18-model comparison across statistical, tree-based, deep learning, and foun
 
 ### Results: Full Backfill Training (~83 days)
 
-| Model | MAE | RMSE | R^2 | Time (s) |
+| Model | MAE | RMSE | R² | Time (s) |
 | ---------------- | --------- | ------ | ------ | -------- |
 | **Direct-Ridge** | **32.99** | 40.32 | 0.358 | 0.20 |
 | Ridge | 33.04 | 40.19 | 0.360 | 0.00 |
@@ -150,13 +171,13 @@ Full 18-model comparison across statistical, tree-based, deep learning, and foun
 
 ### Phase 1 Key Findings
 
-1. **Direct-Ridge wins** at MAE 32.99 -- simple Ridge with direct multi-step forecasting and weather features beats all 17 competitors.
-2. **More data helps**: Every model improved from 7-day to full backfill training, except Seasonal Naive (unchanged by definition).
-3. **Weather is critical** for Ridge-based and Transformer models (~10--18 MAE improvement), but *hurts* RF, CatBoost, LightGBM. Hypothesis: recursive tree models cannot use lag-1 weather effectively 336 steps out because the weather values become stale during recursive prediction.
-4. **Recursive tree models underperform** their direct counterparts (XGBoost 40.84 vs Direct-XGBoost 33.50) due to 336-step error compounding.
-5. **Foundation/deep models** (Chronos 43.26, Transformers ~42, N-BEATS 62.60, N-HiTS 76.36) do not justify their complexity on this dataset.
+1. **Direct‑Ridge is the strongest performer**, achieving an MAE of **32.99**. A simple Ridge model with direct multi‑step forecasting and weather inputs outperforms all 17 other baselines.
+2. **More training data consistently improves accuracy.** Every model benefits from expanding the training window from 7 days to the full backfill period — with the expected exception of Seasonal Naive, which cannot improve by design.
+3. **Weather features are highly valuable for linear and Transformer models**, delivering **~10–18 MAE** improvements. In contrast, they *hurt* RF, CatBoost, and LightGBM. A likely explanation: in recursive tree models, **lag‑1 weather becomes stale** when rolled forward 336 steps, leading to compounding error.
+4. **Recursive tree models underperform their direct counterparts.** For example, XGBoost improves from **40.84 → 33.50** when switching to direct forecasting, highlighting how recursive error accumulation degrades long‑horizon performance.
+5. **Deep and foundation models do not justify their complexity** on this dataset. Chronos‑Tiny (43.26), Transformers (~42), N‑BEATS (62.60), and N‑HiTS (76.36) all lag behind simpler baselines.
 
-## 4. Phase 2: Enhanced Features
+## Phase 2: Enhanced Features
 
 ### What Changed
 
@@ -166,7 +187,7 @@ Redesigned feature engineering for recursive tree models to reduce noise and add
 | ------------- | -------------------------------- | ------------------------------------------- |
 | Lags | 48 consecutive (1--48) | 19 sparse: 1--12, 24, 48, 72, 96, 144, 336 |
 | Rolling stats | mean_12, mean_48, std_48 | mean_12, mean_48, mean_336, std_48, std_336 |
-| Cyclical | hour, dow, minute-of-day sin/cos | hour, dow, **week-of-year** sin/cos |
+| Cyclical | hour, day‑of‑week, minute‑of‑day (sin/cos) | hour, day‑of‑week, **week‑of‑year** (sin/cos) |
 | Weather | 3 features (unchanged) | 3 features (unchanged) |
 | **Total** | **60 features** | **33 features** |
 
@@ -197,11 +218,19 @@ Enhanced features: prediction traces.
 3. **Random Forest barely changed** (+1.2%) -- its bagging ensemble is less sensitive to feature selection than boosting models.
 4. **Direct-XGBoost slightly regressed** (+1.8%) -- the additional origin features added noise. Its direct approach already avoids recursive compounding, so weekly lags are less beneficial.
 
-## 5. Phase 3: Residual Target
+## Phase 3: Residual Target
 
 ### What Changed
 
-Instead of predicting raw carbon intensity `y`, models predict the deviation from persistence: `y_residual = y - lag_1`. At inference, predictions are reconstructed as `prediction = lag_1 + model_residual`.
+Instead of forecasting the raw carbon intensity `y`, models now predict the **residual relative to persistence**:
+
+`y_residual = y - lag_1`
+
+At inference time, predictions are reconstructed as:
+
+`prediction = lag_1 + model_residual`
+
+This reframing stabilises the learning problem, reduces scale drift, and makes long‑horizon forecasting easier by anchoring predictions to a strong baseline.
 
 ### Cross-Region Average Results
 
@@ -225,12 +254,17 @@ Residual target: prediction traces.
 
 ### Phase 3 Key Findings
 
-1. **Residual target improved RF and CatBoost** substantially (-4.66 and -3.40 vs enhanced). These models benefit from the reduced target variance.
-2. **XGBoost and LightGBM slightly regressed** vs their enhanced variants. Their gradient boosting already handles the raw target well with enhanced features.
-3. **Direct-XGBoost unaffected** (+0.37) -- direct models do not compound errors recursively, so the residual trick provides no benefit.
-4. **Best variant selection** for Phase 4: RF -> residual (46.61), XGBoost -> enhanced (35.44), CatBoost -> residual (41.04), LightGBM -> enhanced (39.12), Direct-XGBoost -> baseline (33.50).
+1. **Residual targets significantly improved RF and CatBoost**, reducing MAE by **–4.66** and **–3.40** relative to their enhanced variants. These models benefit from the lower variance and simpler error structure of the residual formulation.
+2. **XGBoost and LightGBM show slight regressions** compared with their enhanced versions. Their gradient‑boosting frameworks already model the raw target effectively when given richer features, so the residual trick offers limited upside.
+3. **Direct‑XGBoost remains essentially unchanged** (+0.37). Because direct models avoid recursive error accumulation, reframing the target provides no meaningful advantage.
+4. **Best variant choices for Phase 4**:  
+    - **RF → residual** (46.61)  
+    - **XGBoost → enhanced** (35.44)  
+    - **CatBoost → residual** (41.04)  
+    - **LightGBM → enhanced** (39.12)  
+    - **Direct‑XGBoost → baseline** (33.50)
 
-## 6. Phase 4: Seasonal Data Expansion
+## Phase 4: Seasonal Data Expansion
 
 ### What Changed
 
