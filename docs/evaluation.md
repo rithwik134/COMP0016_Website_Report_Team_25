@@ -64,23 +64,35 @@ There are no known bugs in the system at the time of submission.
 
 ---
 
-## Individual Contribution Table — System
+## Individual Contribution Table — System Artefacts
 
-| Team Member | Contribution | Percentage |
-| --- | --- | --- |
-| Ken | | % |
-| Maks | | % |
-| Ali | | % |
-| Rithwik | | % |
+| Work Packages | Ken | Maks | Ali | Rithwik |
+| --- | --- | --- | --- | --- |
+| Research and Experiments | | | | | |
+| UI Design (if applicable) | | | | |
+| Coding | | | | |
+| Testing | | | | |
+| **Overall contribution** | | | | |
 
 ## Individual Contribution Table — Website Report
 
-| Team Member | Contribution | Percentage |
-| --- | --- | --- |
-| Ken | | % |
-| Maks | | % |
-| Ali | | % |
-| Rithwik | | % |
+| Work Packages | Ken | Maks | Ali | Rithwik |
+| --- | --- | --- | --- | --- |
+| Website Template and Setup  | | | | | |
+| Home | | | | |
+| Video | | | | |
+| Requirement | | | | |
+| Research | | | | |
+| Algorithm | | | | |
+| UI Design | | | | |
+| System Design | | | | |
+| Implementation | | | | |
+| Testing | | | | |
+| Evaluation and Future Work | | | | |
+| User and Deployment Manuals | | | | |
+| Legal Issues | | | | |
+| Blog and Monthly Video | | | | |
+| **Overall contribution** | | | | |
 
 ---
 
