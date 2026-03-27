@@ -59,6 +59,9 @@ Below is an excerpt of the key findings from these interviews:
     **Question:** If you could design the perfect solution, what would it look like? <br>
     **Answer:** I like the idea of an intelligent system that optimises workload placement across cloud and on-prem environments based on real time carbon intensity and resource efficiency. It should provide transparent metrics like the SCI scores you mentioned and allow me to make trade offs without sacrificing performance.
 
+    **Question:** How do you currently estimate the energy consumption or carbon footprint of your AI models? <br>
+    **Answer:** Honestly, we don’t. We know we’re using four NVIDIA A100s for a six-hour inference run, but translating that into kilowatt-hours or $CO_2$ is a manual headache. If I could just input the hardware I'm actually using—the GPU type, the count, and the duration—and have the system handle the conversion, it would be much more likely to be adopted. We need the tool to speak the language of a developer, not an electrician.
+
     **Question:** Do you think the industry is moving toward sustainability? <br>
     **Answer:** Slowly, yes. There’s growing awareness, but use is uneven. We need more tools that make sustainability easy and measurable, so it becomes a natural part of AI development rather than something optional.
 
@@ -82,6 +85,7 @@ The following high-level architectural requirements were derived from our resear
 3. **Provide a clear comparison against an unoptimised schedule**: Users need to understand the impact of carbon-aware scheduling in real, tangible terms. The system should therefore generate both an optimised schedule and a baseline schedule that prioritises speed alone. The UI should present these side-by-side, along with intuitive metrics showing the carbon saved, so users can easily interpret the benefits of the optimisation.
 4. **Ensure the system remains practical and deployable**: Carbon-aware scheduling must work within real operational constraints. The system should respect job deadlines, datacentre availability, and workload requirements, and it should integrate cleanly with existing pipelines. The goal is not to redesign how AI workloads are written, but to make smarter decisions about when and where they run.
 5. **Support transparent, standards-aligned reporting**: To make the results meaningful and comparable, the system should produce impact estimates aligned with recognised green-software metrics (e.g., SCI). This ensures that organisations can trust and reuse the outputs in their own sustainability reporting.
+6. **Allow for hardware specific workload definition**: To lower the barrier for entry, the system must allow users to define workloads using familiar hardware parameters—such as GPU model (e.g., NVIDIA A100), GPU count, and estimated execution time—rather than requiring manual energy consumption (kWh) inputs. The system should internally map these hardware constants to power profiles to calculate the total energy demand and carbon impact accurately.
 
 Further conclusions are drawn in the MoSCoW requirements at the bottom of the page.
 
@@ -213,10 +217,10 @@ Below, you can see a list of use cases for our program:
 | 5 | Graphically display when and where a workload is scheduled to run. | Should Have |
 | 6 | Ability to view all workloads scheduled with the software simultaneously on a single graph. | Should Have |
 | 7 | Provide information about carbon intensity at different times and datacentres, so users can evaluate the optimality of the schedule themselves. | Should Have |
-| 8 | Provide the user with information about the maximum forecasting window. | Should Have |
+| 8 | Workload description and configuration using hardware-specific information (GPU type, model size, number of GPUs, duration). | Should Have |
 | 9 | Provide the user with the percentage of carbon saved compared to a trivial schedule. | Should Have |
 | 10 | Display maximum capacity and exogenous load at each datacentre, providing more insight to the user. | Could Have |
-| 11 | Workload description and configuration using hardware-specific information (GPU type, model size, number of GPUs, duration). | Could Have |
+| 11 | Provide the user with information about the maximum forecasting window. | Could Have |
 | 12 | Allow modification of the available datacentre set to schedule on. | Could Have |
 | 13 | Map presenting the geographical location of datacentres. | Could Have |
 | 14 | Allow the user to visually compare a trivial schedule to the optimised schedule. | Could Have |
