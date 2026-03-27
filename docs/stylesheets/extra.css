@@ -64,3 +64,26 @@ code, pre {
 .grid.authors li img {
   margin: 0 auto;
 }
+
+/* Ensure the horizontal scrollbar for tabs is always visible */
+.md-tabs__list {
+  scrollbar-width: thin;
+  scrollbar-color: var(--md-accent-fg-color) transparent;
+  overflow-x: scroll !important;
+  padding-bottom: 2px; /* Add a tiny bit of space for the scrollbar */
+}
+
+.md-tabs__list::-webkit-scrollbar {
+  height: 4px;
+  display: block;
+}
+
+.md-tabs__list::-webkit-scrollbar-thumb {
+  background-color: var(--md-accent-fg-color);
+  border-radius: 4px;
+}
+
+.md-tabs__list::-webkit-scrollbar-track {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
