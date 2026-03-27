@@ -40,7 +40,7 @@ This upcoming presentation is not a mere dissemination of academic research. The
 
 ## Project Demo Video
 
-*TODO: Embed 8-minute demo video*
+![type:video](https://www.youtube.com/embed/ss30qUKIru0)
 
 ---
 
