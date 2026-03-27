@@ -136,6 +136,6 @@ The forecasting algorithm is what serves carbon intensity predictions to the sch
 
 ### References
 
-[1] Green Software Foundation, "Carbon Aware SDK Documentation," GitHub, 2023. [Online]. Available: [https://github.com/Green-Software-Foundation/carbon-aware-sdk](https://github.com/Green-Software-Foundation/carbon-aware-sdk). [Accessed: Mar. 2026]. 
+[1] Green Software Foundation, "Carbon Aware SDK Documentation," GitHub, 2023. [Online]. Available: [https://github.com/Green-Software-Foundation/carbon-aware-sdk](https://github.com/Green-Software-Foundation/carbon-aware-sdk). [Accessed: Mar. 2026].<br>
 [2] A. E. Hoerl and R. W. Kennard, "Ridge regression: Biased estimation for nonorthogonal problems," *Technometrics*, vol. 12, no. 1, pp. 55–67, Feb. 1970, doi: [10.1080/00401706.1970.10488634](https://doi.org/10.1080/00401706.1970.10488634).
 ---
