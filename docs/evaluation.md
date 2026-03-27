@@ -66,33 +66,58 @@ There are no known bugs in the system at the time of submission.
 
 ## Individual Contribution Table — System Artefacts
 
-| Work Packages | Ken | Maks | Ali | Rithwik |
-| --- | --- | --- | --- | --- |
-| Research and Experiments | | | | | |
-| UI Design (if applicable) | | | | |
-| Coding | | | | |
-| Testing | | | | |
-| **Overall contribution** | | | | |
+| System's Component | Maks | Ken | Ali | Rithwik |
+| :--- | :--- | :--- | :--- | :--- |
+| **GENERAL** | | | | |
+| System Architecture Design | 30% | 70% | 0% | 0% |
+| API Design | 20% | 80% | 0% | 0% |
+| Continuous Deployment | 10% | 90% | 0% | 0% |
+| Packaging | 0% | 100% | 0% | 0% |
+| Documentation | 5% | 90% | 5% | 0% |
+| Research | 40% | 0% | 60% | 0% |
+| Testing | 40% | 40% | 20% | 0% |
+| **UI** | | | | |
+| Initial Drafting | 30% | 30% | 10% | 30% |
+| Efficiency | 100% | 0% | 0% | 0% |
+| Graphical Design | 10% | 40% | 0% | 50% |
+| Implementation | 28% | 20% | 2% | 50% |
+| **SCHEDULER** | | | | |
+| Webserver | 50% | 50% | 0% | 0% |
+| Algorithm | 25% | 75% | 0% | 0% |
+| Database | 75% | 25% | 0% | 0% |
+| Build System | 30% | 70% | 0% | 0% |
+| Comparison | 100% | 0% | 0% | 0% |
+| Benchmark | 100% | 0% | 0% | 0% |
+| Utilities | 40% | 60% | 0% | 0% |
+| **STATS** | | | | |
+| Model Research | 0% | 0% | 100% | 0% |
+| Hosting | 0% | 10% | 90% | 0% |
+| Implementation | 5% | 25% | 70% | 0% |
+| **OVERALL** | 31.25% | 33.75% | 25% | 10% |
 
 ## Individual Contribution Table — Website Report
 
-| Work Packages | Ken | Maks | Ali | Rithwik |
-| --- | --- | --- | --- | --- |
-| Website Template and Setup  | | | | | |
-| Home | | | | |
-| Video | | | | |
-| Requirement | | | | |
-| Research | | | | |
-| Algorithm | | | | |
-| UI Design | | | | |
-| System Design | | | | |
-| Implementation | | | | |
-| Testing | | | | |
-| Evaluation and Future Work | | | | |
-| User and Deployment Manuals | | | | |
-| Legal Issues | | | | |
-| Blog and Monthly Video | | | | |
-| **Overall contribution** | | | | |
+### Report:
+
+| Part of the Website | Maks | Ken | Ali | Rithwik |
+| :--- | :--- | :--- | :--- | :--- |
+| Setup | 0% | 100% | 0% | 0% |
+| Continuous Deployment | 0% | 100% | 0% | 0% |
+| Home | 20% | 10% | 20% | 50% |
+| Requirements | 25% | 5% | 25% | 45% |
+| Research | 30% | 0% | 70% | 0% |
+| Algorithms | 20% | 80% | 0% | 0% |
+| UI Design | 0% | 0% | 100% | 0% |
+| System Design | 0% | 80% | 20% | 0% |
+| Implementation | 30% | 30% | 30% | 0% |
+| Testing | 0% | 0% | 100% | 0% |
+| Evaluation | 70% | 0% | 30% | 0% |
+| Possible Extensions | 33% | 0% | 66% | 0% |
+| AI Research Journal | 0% | 0% | 100% | 0% |
+| Appendices | 0% | 0% | 0% | 100% |
+| Demo Video | 20% | 20% | 40% | 20% |
+| Monthly Videos | 25% | 25% | 25% | 25% |
+| **Total Contribution** | 25% | 25% | 25% | 25% |
 
 ---
 
