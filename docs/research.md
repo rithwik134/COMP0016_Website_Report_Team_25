@@ -114,11 +114,11 @@ The production model's 65 input features fall into five groups:
 
 **Temporal features (22)** encode *when* the prediction target is. These use Fourier harmonics (pairs of sine and cosine waves at different frequencies) to represent cyclical time patterns. For example, `sin(2pi x hour/24)` and `cos(2pi x hour/24)` together encode the hour of day as a smooth cycle -- hour 23 is close to hour 0, not far away as it would be if encoded as a raw number. Six harmonics for hour-of-day capture increasingly fine-grained intra-day patterns (the 1st harmonic captures the broad day/night cycle; the 6th captures short patterns like the morning demand ramp). Also includes a weekend flag and a night flag.
 
-**Horizon features (4)** encode *how far ahead* the prediction is. The raw horizon `h` is supplemented with `h^2`, `h^3`, and `log(h)`. This lets the model learn that forecast accuracy degrades non-linearly with distance -- quickly at first (hours 1--24) then more gradually (days 3--7).
+**Horizon features (4)** encode *how far ahead* the prediction is. The raw horizon `h` is supplemented with `h²`, `h³`, and `log(h)`. This lets the model learn that forecast accuracy degrades non-linearly with distance -- quickly at first (hours 1--24) then more gradually (days 3--7).
 
 **Origin statistics (13)** summarise *what carbon intensity has been doing recently* at the time the forecast is made. Features include the last reading, 24-hour and 7-day rolling statistics (mean, std, median, min, max), lag values at 24h and 7d offsets, a short-term trend indicator, and the historical average for the current half-hour slot.
 
-**Weather features (16)** encode *weather conditions at the target time*. During training, these are actual historical weather from the Open-Meteo archive aligned to each target timestamp. During inference, these are Open-Meteo weather forecasts for each future horizon step. 10 raw features (temperature, humidity, dewpoint, pressure, cloud cover, wind speed, wind direction, wind gusts, solar radiation, precipitation) plus 6 engineered features: wind power (speed^3), wind ramp, pressure change, solar clearness, temperature deviation, and wind direction sin/cos.
+**Weather features (16)** encode *weather conditions at the target time*. During training, these are actual historical weather from the Open-Meteo archive aligned to each target timestamp. During inference, these are Open-Meteo weather forecasts for each future horizon step. 10 raw features (temperature, humidity, dewpoint, pressure, cloud cover, wind speed, wind direction, wind gusts, solar radiation, precipitation) plus 6 engineered features: wind power (speed³), wind ramp, pressure change, solar clearness, temperature deviation, and wind direction sin/cos.
 
 **Interaction features (10)** are products of features from different groups that let a linear model capture non-linear relationships. For example, `last_value x horizon` lets the model learn that a high current reading matters more for short-term predictions than long-term ones. `wind_speed x hour_sin` lets the model learn that wind has different effects at different times of day.
 
@@ -192,7 +192,7 @@ The single largest improvement came from expanding the feature set:
 | Feature Group | Old (14 features) | New (65 features) |
 | ------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | Temporal | 2 sin/cos pairs (hour, dow) | 22: 6 Fourier harmonics for hour, 2 for dow, 2 for doy, weekend flag, night flag |
-| Horizon | 1 feature (h/336) | 4: h, h^2, h^3, log(h) |
+| Horizon | 1 feature (h/336) | 4: h, h², h³, log(h) |
 | Origin stats | 3 (last, mean, std) | 13: + median, min, max, 7-day stats, lag_24h, lag_7d, trend, same_hour_mean |
 | Weather | 3 raw | 16: 10 raw + 6 engineered (wind_power, wind_ramp, pressure_change, solar_clearness, temp_deviation, wind_dir sin/cos) |
 | Interactions | 0 | 10: last x horizon, weekend x hour, wind x hour, solar x hour, etc. |

@@ -293,7 +293,7 @@ archive weather aligned to target timestamps during training, and Open-Meteo
 forecast weather at inference. Each of the 336 horizon steps receives weather
 for its specific future time. The 16 weather features (10 raw + 6 engineered)
 capture the causal chain from weather to generation mix to carbon intensity.
-Wind power (wind^3), solar clearness, pressure change, and wind ramp encode
+Wind power (wind³), solar clearness, pressure change, and wind ramp encode
 domain-relevant physics that raw values miss. The weather ablation showed
 Direct-Ridge gains −11.56 MAE from weather alone.
 
