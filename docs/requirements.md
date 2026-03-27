@@ -9,18 +9,11 @@ AI workloads (e.g., training large models, inference services) are resource-inte
 
 NTT Data is a global provider of digital and IT services, focused on combining advanced computing capabilities with environmental responsibility. The company works on integrating high-performance computing with sustainable practices, particularly in how large-scale AI workloads interact with energy systems. By developing carbon-aware workload placement strategies, NTT Data aims to raise the standard for sustainability in distributed data centre operations.
 
-As our client, NTT Data tasked us with investigating carbon-aware scheduling across both on-premise and distributed data centre environments. The goal is to make environmental impact a central factor in deciding where and when workloads run. Using carbon-intensity forecasts and workload flexibility, tasks can be shifted to times and locations powered by cleaner energy. By combining prediction, scheduling, and impact reporting into a unified system, this project offers organisations a practical way to reduce emissions from AI operations without redesigning their existing pipelines.
+As our client, NTT Data tasked us with investigating carbon-aware scheduling across distributed data centre environments. The goal is to make environmental impact a central factor in deciding where and when workloads run. Using carbon-intensity forecasts and workload flexibility, tasks can be shifted to times and locations powered by cleaner energy. By combining prediction, scheduling, and impact reporting into a unified system, this project offers organisations a practical way to reduce emissions from AI operations without redesigning their existing pipelines.
 
 ### Project Goals
 
-The overarching goal is to reduce the environmental impact of AI workloads by optimising when and where they run, while keeping the system realistic for real‑world deployment.
-More specifically, the framework aims to:
-
-- Minimise emissions by selecting execution windows and locations with lower carbon intensity.
-- Enable carbon‑aware decisions using both forecasted and historical grid‑intensity data.
-- Take advantage of workload flexibility by breaking parallelisable jobs into short, schedulable blocks.
-- Evaluate results using recognised green‑software metrics, including the Software Carbon Intensity (SCI) methodology.
-- Deliver an end‑to‑end system—covering prediction, scheduling, and results visualisation—that teams and organisations can adopt directly.
+The overarching goal is to reduce the environmental impact of AI workloads by optimising when and where they run. To achieve this, the project focuses on three core pillars: **spatial and temporal optimization** (moving jobs in both time and location), **granularity** (breaking jobs into blocks for flexibility), and **transparency** (using SCI-aligned reporting to prove impact). These pillars ensure the system is both environmentally effective and operationally practical for NTT DATA’s distributed infrastructure.
 
 ### Requirement Gathering
 
@@ -33,6 +26,7 @@ Before engaging with users, we analyzed existing industry frameworks, specifical
 
 **2. Broad Industry Survey**  
 We distributed a quantitative questionnaire to 120 professionals across DevOps, AI research, and autonomous systems engineering. The survey focused on ranking their priorities (e.g., latency, cost, carbon footprint) and assessing their current tooling. 
+
 *Key Finding:* Over 75% of respondents indicated they would optimize for lower carbon intensity if the metrics were transparent and didn't disrupt their existing CI/CD pipelines, highlighting a severe lack of accessible sustainability tooling.
 
 **3. Focus Group Workshops**  
@@ -81,7 +75,7 @@ Persona 1, Tim Jackson. Junior Devops Technician of Autonomous Drones Company
 Persona 2, Bob Lecun. AI Researcher and Developer
 ///
 
-Based on the surveys, personas, and early design discussions, our team identified several high-level requirements that shape the system:
+The following high-level architectural requirements were derived from our research to ensure the system addresses the specific pain points of our personas:
 
 1. **Optimise placement across multiple premises**: Existing carbon-aware tools typically optimise when a workload runs, but assume it will always run in a single datacentre. To achieve deeper carbon reductions, the system should consider both time and location. Allowing workloads to move between premises enables the scheduler to take advantage of cleaner regions rather than relying on the variability of a single site. This also requires accounting for practical overheads, such as the startup cost of launching a job in a new datacentre.
 2. **Split workloads into smaller, schedulable blocks**: Many AI workloads are naturally parallelisable, which means they can be broken into smaller units without affecting correctness. By dividing jobs into short, discrete execution blocks, the scheduler gains far more flexibility to place work in low-carbon windows and distribute it across cleaner regions. This fine-grained structure is essential for achieving meaningful carbon savings rather than coarse, all-or-nothing shifts.
@@ -180,7 +174,7 @@ Below, you can see a list of use cases for our program:
 | --- | --- |
 | ID | UC7 |
 | Actor | User |
-| Description | User compares optimised and unoptimised schedules |
+| Description | Interactive toggle to overlay baseline (speed-first) metrics against the carbon-aware schedule for impact validation. |
 | Preconditions | User is viewing UC6 (View Schedule Result) and unoptimised schedule data is available |
 | Main Flow | 1. System displays comparison toggle buttons: "Optimised" and "Unoptimised" in the environmental impact card.<br>2. User clicks "Unoptimised" button.<br>3. System switches view to show unoptimised (trivial) schedule metrics and workload.<br>4. System updates impact card background colour (orange tint for unoptimised), chart data (orange areas instead of green), and comparison savings percentages (displayed as badges showing % improvement).<br>5. User can toggle back to "Optimised" to see original optimised schedule. |
 | Result | Schedule result view displays toggled data with updated visualisations and savings indicators. |
@@ -214,8 +208,8 @@ Below, you can see a list of use cases for our program:
 | --- | --- | --- |
 | 1 | Ability to schedule a workload using specified parameters (e.g. total workload, deadline). | Must Have |
 | 2 | Display information about emissions (e.g. total carbon emissions, SCI, electrical usage) after scheduling. | Must Have |
-| 3 | Ability to view previously scheduled workloads. | Must Have |
-| 4 | Ability to delete previously scheduled workloads. | Must Have |
+| 3 | Retrieve and display a historical log of all previously submitted AI workloads. | Must Have |
+| 4 | Remove or cancel pending scheduled jobs from the database. | Must Have |
 | 5 | Graphically display when and where a workload is scheduled to run. | Should Have |
 | 6 | Ability to view all workloads scheduled with the software simultaneously on a single graph. | Should Have |
 | 7 | Provide information about carbon intensity at different times and datacentres, so users can evaluate the optimality of the schedule themselves. | Should Have |
