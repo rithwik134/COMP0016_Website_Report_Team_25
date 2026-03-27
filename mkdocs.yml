@@ -7,18 +7,18 @@ repo_name: "Carbon-Aware AI Agents"
 theme:
   name: material
   palette:
-    - scheme: slate
-      primary: teal
-      accent: green
-      toggle:
-        icon: material/brightness-4
-        name: Switch to light mode
     - scheme: default
       primary: teal
       accent: green
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
+    - scheme: slate
+      primary: teal
+      accent: green
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
   font: false
   custom_dir: docs/overrides
   features:
