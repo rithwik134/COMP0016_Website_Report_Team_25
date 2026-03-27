@@ -8,7 +8,8 @@ This page details how the key features of the Carbon-Aware AI Agent were impleme
 
 ## `scheduler`
 
-`scheduler` is the C++ scheduling component that performs the computational optimization of distributing AI workloads across multiple data centers and time horizons to minimize carbon emissions. The following sections trace the lifecycle of a scheduling workflow, request-to-response, highlighting design principles, interactions between sub-components, and engineering decisions made around specific constraints.
+`scheduler` is the C++ scheduling component that performs the computational optimization of distributing AI workloads across multiple data centers and time horizons to minimize carbon emissions, following the principles of carbon-aware computing \[4\] and utilizing metrics such as the Software Carbon Intensity (SCI) standard \[5\].
+ The following sections trace the lifecycle of a scheduling workflow, request-to-response, highlighting design principles, interactions between sub-components, and engineering decisions made around specific constraints.
 
 ### 1. Request Ingress & Framework Selection
 
@@ -211,43 +212,71 @@ We implemented `TIME_GRIDDER` as a global singleton instance to provide a consis
 
 ### 4. The Optimization Engine (`SchedulerAlgo`)
 
-The engine core implements a custom Dynamic Programming (DP) algorithm designed to minimize carbon emissions across distributed infrastructure. We partitioned the solver into two distinct stages to manage the high-dimensional state space.
+The engine core implements a custom Dynamic Programming (DP) algorithm designed to minimize carbon emissions across distributed infrastructure. While the [Algorithms](algorithms.md) page provides a formal mathematical definition of the [Objective Function](algorithms.md#the-objective-function) and its [Constraints](algorithms.md#constraints), this section details the technical implementation required to realize that theory at scale.
 
-#### Mathematical Formulation
+#### Real-World Discretization
 
-We modeled the scheduling request as a resource allocation problem over $n$ discrete time blocks. For each block $i$, we define an existing load $l_i$, a maximum capacity $r_i$, and a non-decreasing cost function $c_i(load)$.
+The scheduling problem is theoretically continuous, but we realize it as a deterministic state space by discretizing all physical quantities. We transform the requested workload into high-resolution discrete units (default 10,000 levels). This discretization is critical because the continuous version of the problem—resembling a non-linear knapsack problem with step-discontinuity penalties—is mathematically intractable \[1\]. By mapping the request to a discrete 2D grid of $m$ locations and $n$ time blocks, we ensure the global optimum is computationally reachable through Dynamic Programming transitions \[2\].
 
-A key constraint is the **non-continuous run penalty** $P$. If a job starts a new execution run after being idle, it incurs an additional workload penalty (modeling BIOS boot energy and model loading). We solved this by defining **effective work** $E$:
-$$\sum w_i - k \cdot P \geq W$$
-where $k$ is the number of contiguous runs and $W$ is the requested workload. The DP state $dp[i][w][state]$ represents the minimum cost to achieve effective work $w$ using the first $i$ blocks, with $state \in \{active, idle\}$.
+To understand the scale of this task, we evaluate the exact upper-bound time complexity $\mathcal{O}\big(m \cdot W \cdot (n \cdot H_{max} + W)\big)$ under a typical "worst-case" request:
+
+* **Locations ($m = 5$)**: 5 UK regions.
+* **Time Blocks ($n = 1728$)**: A 6-day (144-hour) horizon at 5-minute intervals.
+* **Workload ($W = 10,000$)**: High-resolution discretization for large training jobs.
+* **Block Capacity ($H_{max} \approx 100$)**: Maximum throughput per 5-minute window.
+
+Plugging these bounds into the formula yields roughly $8.6 \times 10^9$ operations for the temporal phase. A standard scalar execution processing over **9 billion state transitions** would stall the UI for multiple seconds, defeating the goal of a real-time, interactive dashboard.
 
 #### Layered Dynamic Programming
 
+To manage this high-dimensional state space, the solver is partitioned into two distinct stages:
+
 | Phase | Scope | Algorithm |
 | :--- | :--- | :--- |
-| **Temporal (`calc_single`)** | Single Datacenter | 2D DP solving optimal allocation across the 7-day time horizon while enforcing the $P$ penalty. |
-| **Spatial (`calc_multiple`)** | Multi-Region | Solves a **Multiple-Choice Knapsack Problem** to distribute the total workload across regional cost curves. |
+| **Temporal (`calc_single()`)** | Single Datacenter | 2D DP solving a **resource allocation** problem while enforcing the $P$ penalty. |
+| **Spatial (`calc_multiple()`)** | Multi-Region | Solves a **Multiple-Choice Knapsack Problem** to distribute the total workload across regional cost curves. |
 
-#### Parallel Execution Strategy
+This decomposition allows us to isolate the most compute-intensive logic (`calc_single`) and apply targeted hardware optimizations to it, while the spatial phase focuses on aggregating results from multiple regions.
 
-We optimized the spatial phase for multi-core architectures by parallelizing independent solver instances. We utilize `std::async` to trigger regional temporal solvers concurrently, achieving near-linear speedup. Furthermore, the knapsack merge phase parallelizes row-wise DP updates using C++ execution policies:
+#### Effective Work Transformation
 
-```cpp
-// Parallel row-wise update of the knapsack DP table
-for_each(execution::par_unseq, w_range.begin(), w_range.end(),
-         [&](const auto w) {
-             for (const auto k : views::iota(0, w + 1)) {
-                 // ... update next_dp[w] with min cost
-             }
-         });
-```
+To enforce the [Startup Penalty](algorithms.md#constraints) $P$ without increasing the DP dimensionality, we implemented an **Effective Work** transformation inside the temporal phase. Instead of tracking the number of "starts" as a separate state variable, we adjust the workload increment during transitions:
+$$\sum w_i - k \cdot P \geq W$$
+where $k$ is the number of contiguous execution runs. By defining the DP state $dp[i][w][state]$ around this effective work $w$, the engine naturally penalizes non-contiguous allocations during the single-location temporal phase without the exponential complexity of an additional state dimension.
 
-#### Instruction-Level Optimizations (SIMD)
+#### Profiling and Bottleneck Identification
 
-The temporal solver handles upwards of **9 billion transitions** for a worst-case request. We eliminated the resulting latency through instruction-level engineering:
+We profiled the initial scalar implementation using Linux `perf` sampling at 997 Hz to identify microarchitectural bottlenecks. Hardware performance counters revealed three critical issues:
 
-* **Data Layout (SoA)**: We refactored memoization tables from **Array of Structs (AoS)** to **Struct of Arrays (SoA)**. By grouping fields like `costs` and `parents` into contiguous memory, we reduced L1 cache misses by ~25% as the CPU no longer loads irrelevant reconstruction metadata during the cost-update hot-path.
-* **SIMD Vectorization**: We manually vectorized the innermost DP transition loop using **AVX2 and AVX512 intrinsics**.
+1. **Cache Thrashing**: An L1 data cache miss rate of ~25% caused by scattered memory access patterns.
+2. **Instruction Throughput**: A poor 0.85 instructions per cycle (IPC) in the DP hot-path due to complex scalar branching.
+3. **Allocator Contention**: Dynamic memory allocations (`operator new`/`delete`) inside the innermost loops consumed roughly 22% of total execution time.
+
+Interactive flame graphs localized these overheads, revealing that while `calc_single` accounted for ~90% of inclusive execution time, only ~42% was actual computation—the rest was management overhead from naive data layouts and repetitive allocation patterns.
+
+[**Open Interactive Flame Graph — Scalar Baseline (Before Optimization)**](images/benchmarks/flamegraph_before.svg){ target="_blank" }  
+Hover over frames to see sample counts and self-percentages.  
+Click to zoom into a specific subtree (e.g., `calc_single`).  
+Ctrl+F to search for specific symbols (e.g., `operator new`).  
+
+The profiling session exposed four dominant sources of overhead inside the DP hot-path:
+
+| Overhead source | Inclusive % | Root cause |
+|---|---|---|
+| `operator new` / `operator delete` | **~22%** | `MemoEntry` vectors dynamically allocated/freed on every DP state transition. |
+| `MemoEntry::operator=` / `MemoEntry::MemoEntry` | **~7%** | AoS layout forced per-struct `memcpy` on every path-reconstruction update. |
+| `vector<MemoEntry>::_M_realloc_insert` | **~7%** | Inner-loop vectors repeatedly resized, triggering `memmove` bulk copies. |
+| `cost_lookup` (hash table) | **~6%** | Cost values recalculated via `std::unordered_map` lookup per transition. |
+
+These metrics directly dictated the sequence of our refactoring efforts: removing allocations, flattening memory structures, and finally applying SIMD. Each of the three optimizations below directly addresses one or more of these overhead categories.
+
+#### Hardware-Level Optimizations (SIMD)
+
+We eliminated the latencies identified during profiling through targeted instruction-level engineering, focusing on the `calc_single` hot-path:
+
+* **Hot-Path Refinement (Removing Allocations)**: We eliminated allocator overhead by removing all dynamic memory allocations from the hot-path. DP tables are pre-allocated once using aligned memory and reused across transitions, removing the **22%** `operator new` cost and associated `vector` reallocations. Additionally, we replaced expensive `std::unordered_map` cost lookups with constant-time memory indexing.
+* **Flattening Memory Structures (SoA)**: We refactored memoization tables from an **Array of Structs (AoS)** to **Struct of Arrays (SoA)**. By grouping fields (such as `costs` and `parents`) into contiguous memory, we reduced L1 cache misses by **~25%**, as the CPU no longer loads irrelevant reconstruction metadata (parents) during the primary cost-update cycles.
+* **SIMD Vectorization & Branchless Logic**: To improve instruction throughput, we manually vectorized the innermost DP transition loop using **AVX2 and AVX512 intrinsics**. By leveraging the non-decreasing nature of our cost function, we implemented branchless logic that allows the CPU to process 8 floating-point states per instruction cycle.
 
 ```cpp
 // SIMD vectorized transition: 8 floating-point ops per cycle
@@ -264,6 +293,37 @@ if (mmask) {
 ```
 
 * **Aligned Allocation**: We utilized `boost::alignment::aligned_allocator` to ensure DP vectors are boundary-aligned with the 64-byte width of AVX512 registers, avoiding the performance penalties of unaligned memory access.
+
+The combined impact of these optimizations can be seen in the improved instruction throughput and eliminated memory overhead:
+
+[**Open Interactive Flame Graph — Optimized Implementation (After Optimization)**](images/benchmarks/flamegraph_after.svg){ target="_blank" }
+
+#### Parallel Execution Strategy
+
+The scheduler's two-phase design was specifically architected to minimize synchronization overhead by isolating independent computation blocks. We performed a **data dependency chain analysis** to identify opportunities for concurrent execution:
+
+* **Regional Independence**: Each instance of `calc_single()` operates on a strictly local dataset (one datacenter's load, capacity, and carbon forecasts). Because these computations share no mutable state, they are "embarrassingly parallel." We utilize `std::async` to trigger regional solvers concurrently, achieving near-linear speedup relative to the number of data centers.
+* **Row-Wise Spatial Parallelism**: In the spatial (multi-region) phase, we identified that while updates to a single DP state $dp[w]$ depend on the previous regional row, updates _across_ different workload levels $w$ within the same row are independent. This allows us to parallelize the inner-loop updates across the workload dimension $W$ (10,000 discrete levels).
+
+We implemented these patterns using modern C++ **execution policies** (`std::execution::par_unseq`):
+
+```cpp
+// Parallel row-wise update of the knapsack DP table
+for_each(execution::par_unseq, w_range.begin(), w_range.end(),
+         [&](const auto w) {
+             for (const auto k : views::iota(0, w + 1)) {
+                 // ... update next_dp[w] with min cost
+             }
+         });
+```
+
+By leveraging `std::execution`, we realized several engineering benefits:
+
+1. **Standardization**: We avoid vendor-specific lock-in (like OpenMP or Cilk), ensuring the codebase remains compliant with the ISO C++ standard and portable across modern toolchains.
+2. **Declarative Optimization**: The declarative nature of execution policies allows the compiler and runtime (such as **Intel oneTBB**) to autonomously determine the optimal thread distribution and vectorization strategy based on the target hardware's microarchitecture.
+3. **Code Expressiveness**: Moving from manual thread management to standard algorithms significantly improves code readability, clearly expressing the _intent_ of parallelism rather than the _mechanics_ of worker-thread orchestration.
+
+This approach reduces manual data-flow management and ensures that the merge phase scales effectively with high discretization resolutions.
 
 ### 5. Persistence & Global State (`Calendar`)
 
@@ -318,9 +378,20 @@ auto summary = scheduler::ScheduleSummary{
 
 This pattern eliminates "partially initialized" states and provides explicit named-parameter semantics, which significantly reduces field-assignment errors compared to traditional constructor or setter patterns.
 
-#### Value Semantics
+#### Move Semantics & Efficiency
 
-The system enforces strict **Value Semantics**. By treating scheduled blocks and requests as immutable values once created, we prevent accidental state corruption when data passes across asynchronous thread boundaries between the `SchedulingQueue` and the `ScheduleController`.
+The system strictly enforces **Move Semantics** to eliminate redundant copies of large data structures, which is critical when handling multi-day scheduling results containing thousands of intervals.
+
+For instance, the `SchedulerBase::fetch_data` method constructs regional load and capacity vectors locally and then "moves" them into the final `SchedulerData` object using `std::move`. This ensures that the underlying memory is transferred rather than copied, reducing the overhead of data ingestion:
+
+```cpp
+// Moving large time-series vectors into the collection
+data.loads_f.push_back(std::move(load));
+data.capacities_f.push_back(std::move(capacity));
+data.carbon_intensities_f.push_back(std::move(carbon_intensity));
+```
+
+Similarly, the `SchedulingQueue` uses move semantics to return computed results from the background worker thread to the awaiting HTTP handler, ensuring that the transition from calculation to response delivery is as thin as possible.
 
 #### Recursive Serialization via Niebloids
 
@@ -387,9 +458,12 @@ To handle network failures robustly, we implemented a lock-free exception captur
 
 ## `stats` (Forecasting Service)
 
-The Stats service is a **FastAPI** application in Python, deployed on a dedicated **Oracle Cloud** instance, that continuously ingests carbon intensity data, trains a Ridge regression model per data center, and serves 7-day carbon intensity forecasts at 5-minute resolution to the C++ Scheduler via a REST API. For details on model selection and experimental comparison against alternative approaches, see the [Research — Forecasting Model Research](research.md#forecasting-model-research) page. The full experimental data is documented in the [AI Research Journal](dev-journal.md).
+The Stats service is a **FastAPI** application in Python, deployed on a dedicated **Oracle Cloud** instance, that continuously ingests carbon intensity data, trains a Ridge regression model \[3\] per data center, and serves 7-day carbon intensity forecasts at 5-minute resolution to the C++ Scheduler via a REST API.
+ For details on model selection and experimental comparison against alternative approaches, see the [Research — Forecasting Model Research](research.md#forecasting-model-research) page. The full experimental data is documented in the [AI Research Journal](dev-journal.md).
 
 ### Service Architecture {#deployment-performance-rationale}
+
+The Stats service is implemented using **FastAPI**. We selected this framework for its high-throughput asynchronous execution (utilizing the Starlette ASGI toolkit) and its native integration with **Pydantic** for schema validation. This architectural choice mirrors the type-safety and non-blocking I/O goals of our C++ backend, allowing the Python forecasting layer to remain responsive even during intensive model retraining cycles.
 
 The service is structured around three background threads that operate on two SQLite databases, with an in-memory model cache sitting between the data layer and the API layer. A detailed architectural diagram of this pipeline is provided in [System Design — Stats Component](system-design.md#stats-component-internal-architecture).
 
@@ -444,13 +518,13 @@ Although the service runs three background threads concurrently (collector, sync
 
 ### Incremental Training via Sufficient Statistics
 
-Training the Ridge model from scratch involves constructing a feature matrix from the entire historical series (~17,500 rows for a year of 30-minute data, expanded to ~2 million training samples via the direct multi-step strategy described below). Rebuilding this matrix every 30 minutes would spike RAM usage to ~1 GB per datacenter — an unnecessary cost given that only one or two new readings arrive each cycle.
+Training the Ridge model from scratch involves constructing a feature matrix from the entire historical series (~17,500 rows for a year of 30-minute data, expanded to \~2 million training samples via the direct multi-step strategy described below). Rebuilding this matrix every 30 minutes would spike RAM usage to \~1 GB per datacenter — an unnecessary cost given that only one or two new readings arrive each cycle.
 
 To avoid this, the service uses **incremental Ridge updates** based on cached sufficient statistics. Ridge regression has a closed-form solution:
 
 $$\mathbf{w} = (\mathbf{X}^T\mathbf{X} + \alpha \mathbf{I})^{-1} \mathbf{X}^T\mathbf{y}$$
 
-Crucially, the matrices $\mathbf{X}^T\mathbf{X}$ (the Gram matrix) and $\mathbf{X}^T\mathbf{y}$ are **additive** — they can be accumulated incrementally without storing the full training matrix. This means we can save these compact statistics after the initial training and update them with only the new data, then re-solve the tiny $65 \times 65$ linear system instantly.
+Crucially, the matrices $\mathbf{X}^T\mathbf{X}$ (the Gram matrix) and $\mathbf{X}^T\mathbf{y}$ are **additive** — they can be accumulated incrementally without storing the full training matrix. This means we can save these compact statistics after the initial training and update them with only the new data, then re-solve the 65 $\times$ 65 linear system with negligible latency.
 
 Each datacenter's model state is stored in an in-memory dictionary containing:
 
@@ -466,9 +540,9 @@ Each datacenter's model state is stored in an in-memory dictionary containing:
 The prediction cycle works in two modes:
 
 1. **Cold start** (first run per datacenter): builds the full ~2M-row feature matrix, fits `RidgeCV` to select $\alpha$, and caches the sufficient statistics and scaler. This runs under a threading lock with a double-check pattern to prevent duplicate work across threads.
-2. **Warm update** (new data arrived, `n_train` increased): builds feature rows only for the new data points, transforms them using the frozen scaler, and accumulates them into the existing Gram matrix and cross-product. Re-solving the $65 \times 65$ system is instantaneous. For a single new 30-minute reading, this produces ~112 rows $\times$ 65 columns $\approx$ **58 KB** of new data — versus ~1 GB for a full rebuild.
+2. **Warm update** (new data arrived, `n_train` increased): builds feature rows only for the new data points, transforms them using the frozen scaler, and accumulates them into the existing Gram matrix and cross-product. Re-solving the $65 \times 65$ system is computationally efficient. For a single new 30-minute reading, this produces ~112 rows $\times$ 65 columns $\approx$ **58 KB** of new data — versus ~1 GB for a full rebuild.
 
-This design ensures that after the one-time cold start, the service never rebuilds the full training matrix. Every subsequent 30-minute cycle processes only the incremental data, keeping peak memory usage low and retraining effectively instant.
+This design ensures that after the one-time cold start, the service never rebuilds the full training matrix. Every subsequent 30-minute cycle processes only the incremental data, keeping peak memory usage low and retraining effectively real-time.
 
 ### The Ridge Regression Predictor (`ridge_enhanced.py`)
 
@@ -560,3 +634,11 @@ The Stats service exposes the following endpoints, consumed by the C++ Scheduler
 | `GET` | `/predictionWindow` | Returns the forecast window length (168 hours) |
 
 Forecast endpoints accept optional `start_time` and `end_time` query parameters (ISO 8601). Responses stitch together historical observations (`is_forecast: false`) with predicted values (`is_forecast: true`), giving the Scheduler and UI a seamless time series across the boundary.
+
+## References
+
+\[1\] S. Martello and P. Toth, _Knapsack Problems: Algorithms and Computer Implementations_. Chichester, UK: John Wiley & Sons, 1990.  
+\[2\] R. Bellman, _Dynamic Programming_. Princeton, NJ, USA: Princeton University Press, 1957.  
+\[3\] A. E. Hoerl and R. W. Kennard, "Ridge Regression: Biased Estimation for Nonorthogonal Problems," _Technometrics_, vol. 12, no. 1, pp. 55-67, 1970.  
+\[4\] A. Radovanovic et al., "Advancing Carbon-Aware Data Centers," Google, Tech. Rep., 2021.  
+\[5\] Green Software Foundation, "Software Carbon Intensity (SCI) Standard," v1.0, 2022.  
