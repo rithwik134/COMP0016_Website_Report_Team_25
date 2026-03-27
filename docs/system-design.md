@@ -139,7 +139,7 @@ flowchart TB
 Internal architecture of the Stats component, showing the data pipeline from external API ingestion through model training and caching to forecast delivery.
 ///
 
-For a detailed explanation of the databases, caching strategy, retraining cadence, and the Ridge regression model itself, see [Implementation — Forecasting Service](implementation.md#forecasting-service-stats-component).
+For a detailed explanation of the databases, caching strategy, retraining cadence, and the Ridge regression model itself, see [Implementation — Forecasting Service](implementation.md#stats-forecasting-service).
 
 ## Sequence Diagrams
 

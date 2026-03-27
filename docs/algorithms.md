@@ -126,9 +126,9 @@ There is an inherent trade-off between execution speed and scheduling maneuverab
 
 However, for astronomically large AI workloads, these "maneuverability" losses are statistically negligible. Furthermore, because maneuverability is strictly correlated with the Resolution ($R$), the system can be arbitrarily scaled to maintain high precision for any workload size, provided the underlying hardware supports the corresponding increase in the $\mathcal{O}(R^2)$ memory and compute requirements.
 
-For details on the technical implementation of the DP engine, including **AVX-512 Vectorization** and asynchronous optimizations, please refer to the [Implementation](implementation.md#c-performance-simd-vectorization) page.
+For details on the technical implementation of the DP engine, including **AVX-512 Vectorization** and asynchronous optimizations, please refer to the [Implementation](implementation.md#hardware-level-optimizations-simd) page.
 
-For experiments and performance comparison using this algorithm, compared the Greenness software foundation SDK [1], please refer to [evaluation.md](evaluation.md#algorithmic-carbon-optimization:-a-comparative-analysis-of-deterministic-dp-scheduling-vs.-gsf-sdk).
+For experiments and performance comparison using this algorithm, compared the Greenness software foundation SDK [1], please refer to [evaluation.md](evaluation.md#algorithmic-carbon-optimization-a-comparative-analysis-of-deterministic-dp-scheduling-vs-gsf-sdk).
 
 ## Carbon Intensity Forecasting
 

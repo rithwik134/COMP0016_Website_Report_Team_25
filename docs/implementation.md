@@ -70,7 +70,7 @@ Furthermore, unlike approaches like a `.validate()` instance method on the struc
 
 A user-experience challenge was in bridging the gap between how AI engineers quantify workloads and how the scheduler operates on scalar quantities internally.
 Users prefer to input workloads in _natural_ units, e.g., "I need to train this 70B parameter model for 10 hours on 16 H100 GPUs", but such data is unusable to the scheduler as model sizes and GPU specs wildly vary.
-We needed a scientific model to unify such "natural" inputs into some standard unit. Our [Hardware Research](research.md#hardware-research) revealed such an common denominator: the measurement of compute in Floating Point Operations (FLOs).
+We needed a scientific model to unify such "natural" inputs into some standard unit. Our [Hardware Research](research.md#hardware-specifications-and-energy-to-computation-modeling) revealed such an common denominator: the measurement of compute in Floating Point Operations (FLOs).
 
 We consequently implemented a Domain Model Translation (the `HardwareConversion` utility) layer that computes an accurate FLO measurement for any given natural input using GPU hardware specification.
 
