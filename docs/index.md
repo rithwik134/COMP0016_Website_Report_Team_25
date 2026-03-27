@@ -86,11 +86,12 @@ This upcoming presentation is not a mere dissemination of academic research. The
 
     ---
 
-    balls
+    ![Rithwik](images/rithwik.png)
 
-    [:octicons-mark-github-16: GitHub](https://github.com/akioweh)
-    [:octicons-link-external-16: Website](https://akioweh.com)
-    [:octicons-mail-16: Contact](mailto:0@akioweh.com)
+    Frontend Developer for the Carbon Aware Scheduler
+
+    [:octicons-mark-github-16: GitHub](https://github.com/rithwik134)
+    [:octicons-mail-16: Contact](mailto:rithwik.chokkalingam.24@ucl.ac.uk)
 
 </div>
 
