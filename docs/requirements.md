@@ -1,15 +1,15 @@
 # Requirements
-
-> [!DANGER]  
-> **NEED "PARTNER INTRODUCTION"**
-
 ---
 
-### Project Background
+### Project Motivation
 
-AI workloads (e.g., training large models, inference services) are resource-intensive and often deployed without sustainability considerations. As AI demand is rapidly rising, it becomes increasingly important we prioritise reducing carbon emissions for sustainable development of AI technologies. NTTData, as a Green Software Foundation (GSF) Steering Member, has been working towards providing a trusted ecosystem of people, standard, and tools for delivering green software.
+AI workloads (e.g., training large models, inference services) are resource-intensive and often deployed without sustainability considerations. As AI demand is rapidly rising, it becomes increasingly important we prioritize reducing carbon emissions for sustainable development of AI technologies.
 
-As our client, NTTData assigned us the job of Investigating carbon‑aware scheduling within on‑premise and distributed datacentre environments. The aim is to make environmental performance a first‑class consideration in workload placement, using forecasted carbon‑intensity data and workload flexibility to shift execution toward cleaner periods and locations. By integrating prediction, scheduling, and impact reporting into a single system, the project provides a practical pathway for organisations to reduce emissions from AI operations without redesigning their existing pipelines.
+### NTT DATA
+
+NTT Data is a global provider of digital and IT services, focused on combining advanced computing capabilities with environmental responsibility. The company works on integrating high-performance computing with sustainable practices, particularly in how large-scale AI workloads interact with energy systems. By developing carbon-aware workload placement strategies, NTT Data aims to raise the standard for sustainability in distributed data centre operations.
+
+As our client, NTT Data tasked us with investigating carbon-aware scheduling across both on-premise and distributed data centre environments. The goal is to make environmental impact a central factor in deciding where and when workloads run. Using carbon-intensity forecasts and workload flexibility, tasks can be shifted to times and locations powered by cleaner energy. By combining prediction, scheduling, and impact reporting into a unified system, this project offers organisations a practical way to reduce emissions from AI operations without redesigning their existing pipelines.
 
 ### Project Goals
 
@@ -24,10 +24,24 @@ More specifically, the framework aims to:
 
 ### Requirement Gathering
 
-> [!DANGER]  
-> be more explicit about the "requirement gathering methods"?
+To ensure our solution effectively balances high-performance compute needs with environmental responsibility, we adopted a multi-method approach to requirement gathering. Relying on a single method can lead to biased assumptions, so we combined quantitative data, industry standards analysis, and qualitative user feedback to build a comprehensive understanding of our users' needs.
 
-We conducted a series of semi-structured interviews on potential users of the program to find the specific needs of our users.
+Our requirement gathering process consisted of the following methods:
+
+**1. Literature and Standards Review**  
+Before engaging with users, we analyzed existing industry frameworks, specifically focusing on the Green Software Foundation (GSF) guidelines and the Software Carbon Intensity (SCI) specification. This helped us establish a baseline understanding of how carbon emissions and energy consumption are currently quantified in cloud and on-premise environments, ensuring our eventual metrics align with industry standards.
+
+**2. Broad Industry Survey**  
+We distributed a quantitative questionnaire to 120 professionals across DevOps, AI research, and autonomous systems engineering. The survey focused on ranking their priorities (e.g., latency, cost, carbon footprint) and assessing their current tooling. 
+*Key Finding:* Over 75% of respondents indicated they would optimize for lower carbon intensity if the metrics were transparent and didn't disrupt their existing CI/CD pipelines, highlighting a severe lack of accessible sustainability tooling.
+
+**3. Focus Group Workshops**  
+We hosted two interactive brainstorming sessions with a mix of cloud architects and autonomous drone operators. Through user journey mapping, we analyzed their current workload deployment pipelines. This exercise helped us identify the exact bottlenecks where sustainability trade-offs are currently being ignored due to high-stress, low-latency requirements (such as disaster response scenarios).
+
+**4. Semi-Structured Interviews**  
+To gain deeper qualitative insights into the pain points uncovered by our survey and focus groups, we conducted a series of one-on-one, semi-structured interviews with potential core users of the program. This allowed us to explore the specific, day-to-day needs, motivations, and frustrations of our users. 
+
+Below is an excerpt of the key findings from these interviews:
 
 === "Autonomous Agent Developer"
  **Question:** Would you say the disaster drone algorithms are built with sustainability in mind?<br>
