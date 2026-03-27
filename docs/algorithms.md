@@ -137,3 +137,13 @@ $$ \mathcal{O}\big(m \cdot W \cdot (n \cdot H_{max} + W)\big) $$
 For details on the technical implementation of the DP engine, including **AVX-512 Vectorization** and asynchronous optimizations, please refer to the [Implementation](implementation.md#c-performance-simd-vectorization) page.
 
 ---
+
+## Carbon Intensity Forecasting
+
+The forecasting algorithm is what serves carbon intensity predictions to the scheduler. The stages of its development and in-depth research into the prediction method can be found at the [Forecasting Model Research](research.md#forecasting-model-research) and [AI Research Journal](dev-journal.md) pages respectively. The production model, **RidgeFull**, is an enhanced Ridge regression — a linear model with L2 regularisation that prevents overfitting by penalising large coefficients [1]. It operates on 65 engineered input features spanning five groups: temporal patterns (Fourier harmonics encoding hour-of-day, day-of-week, and day-of-year cycles), horizon encoding (polynomial and logarithmic terms describing how far ahead the prediction is), recent carbon intensity statistics (rolling means, lags, and trends), weather conditions (temperature, wind speed, solar radiation, cloud cover, and pressure from the Open-Meteo API), and cross-group interaction terms that let the linear model capture non-linear relationships. The model uses **direct forecasting** — each of the 336 horizon steps (7 days at 30-minute resolution) is predicted independently from historical data, rather than recursively feeding predictions back as inputs, which avoids the error compounding that degraded more complex models in our experiments.
+
+### References
+
+[1] A. E. Hoerl and R. W. Kennard, "Ridge regression: Biased estimation for nonorthogonal problems," *Technometrics*, vol. 12, no. 1, pp. 55–67, Feb. 1970, doi: [10.1080/00401706.1970.10488634](https://doi.org/10.1080/00401706.1970.10488634).
+
+---
