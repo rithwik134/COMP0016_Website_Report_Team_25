@@ -21,14 +21,17 @@
 True innovation requires moving from passive consumer to visionary creator. Instead of simply integrating the Green Software Foundation (GSF) Carbon Aware SDK—the industry-standard toolset backed by global tech giants—we chose to challenge it. By engineering a ground-up alternative, this student-led project hasn't just reached technological parity; it has exposed a fundamental flaw in how the industry currently handles sustainable scheduling.
 
 ### The Breakthrough: A 56% Victory
-As documented in our comparative analysis, our proprietary scheduling engine delivers an average **56.5% greater carbon reduction** than the official GSF SDK. 
+
+As documented in our comparative analysis, our proprietary scheduling engine delivers an average **56.5% greater carbon reduction** than the official GSF SDK.
 
 We discovered that the established framework is bottlenecked by a "contiguity penalty"—forcing workloads to run in single, unbroken blocks. By tearing down this constraint and introducing intelligent temporal splitting combined with spatial routing (geographic arbitrage), our algorithm shatters the current benchmarks. We have proven, mathematically and practically, that current enterprise frameworks are leaving massive carbon savings on the table, regardless of the underlying hardware scale.
 
 ### The Spotlight: Championed by NTT DATA
-Recognizing the disruptive potential of this independent breakthrough, our client, **NTT DATA**, has issued a formal invitation for our team to present our findings at an upcoming GSF weekly assembly. We have been granted an extraordinary 30-minute technical deep-dive—a coveted center-stage allocation strictly reserved for industry-shifting innovations that demand rigorous scrutiny. 
+
+Recognizing the disruptive potential of this independent breakthrough, our client, **NTT DATA**, has issued a formal invitation for our team to present our findings at an upcoming GSF weekly assembly. We have been granted an extraordinary 30-minute technical deep-dive—a coveted center-stage allocation strictly reserved for industry-shifting innovations that demand rigorous scrutiny.
 
 ### Anticipating the Titans
+
 We are currently preparing to stand before a steering committee of global innovators to defend our findings. This audience of industry leaders and architects is slated to include representatives from **Microsoft, Google, Intel, GitHub, NTT DATA, Accenture, Thoughtworks, Goldman Sachs, and UBS.**
 
 This upcoming presentation is not a mere dissemination of academic research. The GSF is bringing us into the industry heartbeat because our algorithm represents a critical missing link in carbon-aware orchestration. This invitation stands as definitive validation that independent thinking and unconstrained engineering can systematically out-optimize the foundational software built by the tech industry's titans.
@@ -49,7 +52,9 @@ This upcoming presentation is not a mere dissemination of academic research. The
 
     ---
 
-    balls
+    ![Ken](images/ken.jpeg)
+
+    C++ Professionaller and Professional Neovimmer
 
     [:octicons-mark-github-16: GitHub](https://github.com/akioweh)
     [:octicons-link-external-16: Website](https://akioweh.com)
