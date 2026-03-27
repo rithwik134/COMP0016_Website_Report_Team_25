@@ -41,3 +41,35 @@ To implement this feature, the `SchedulingQueue` would still orchestrate incomin
 When a request reaches the front of the queue, the system checks if the minimum capacity across its time window accommodates its `max_power`. If it does, the compute thread is dispatched immediately. Once the DP engine completes the optimization, the system performs a **reconciliation** step: it releases the pessimistic `max_power` lock across the full window and deducts the precise load only at the specifically scheduled time blocks. This reconciliation frees up space for subsequent requests.
 
 To achieve the necessary performance, this global capacity state can be managed using a **Segment Tree with Lazy Propagation** (Interval-Add / Interval-Min). This structure allows the engine to deduct `max_power` over large time windows and query the minimum available capacity in $\mathcal{O}(\log n)$ time, where $n$ is the number of 5-minute blocks in the forecast horizon.
+
+### 4. Tropical Algebraic Scheduling (Rolling Segment Trees)
+
+The current scheduler is optimized for batch processing of fixed-length windows. A powerful extension would be to refactor the core engine into a **Rolling-Window Segment Tree** based on **Tropical Geometry** (specifically the $(\min, +)$-semiring). This shift from iterative Dynamic Programming to algebraic tree structures would enable real-time, streaming updates and queries with logarithmic complexity.
+
+#### Abstract Algebra Context
+
+The scheduling problem with non-decreasing costs and startup penalties can be modeled as a path-finding problem in a specific algebraic structure. By defining a **Profile Matrix** ($\mathcal{M}$) where entries $f_{uv}(w)$ represent the minimum cost to perform work $w$ starting in state $u$ and ending in state $v$, we can treat the composition of time intervals as a matrix multiplication over the $(\min, +)$ semiring:
+
+$$
+\mathcal{M} = \begin{bmatrix} f_{00}(w) & f_{01}(w) \\ f_{10}(w) & f_{11}(w)
+\end{bmatrix}
+$$
+
+The operation to merge two adjacent time intervals (Interval $A$ followed by Interval $B$) is equivalent to a $(\min, +)$ convolution:
+
+$$
+(A \otimes B)_{uv}(w) = \min_{k \in \{0,1\}} \min_{0 \le i \le w} \left(
+A_{uk}(i) + B_{kv}(w-i) \right)
+$$
+
+Because this operation is associative, the entire time horizon can be represented as a Segment Tree where each node stores a Profile Matrix.
+
+#### Complexity and Efficiency
+
+- **Logarithmic Scaling:** In the current DP implementation, querying a range or updating a single block's load requires a linear pass over the time horizon ($O(n \cdot W^2)$). By lifting this logic into a Segment Tree, both Point Updates (modifying a forecast) and Range Queries (finding the optimal cost for any arbitrary window) are reduced to $O(\log n \cdot W^2)$, where $n$ is the number of blocks and $W$ is the work resolution.
+- **Rolling Window Streaming:** Using a logical circular buffer mapped to the tree's leaves, the scheduler can handle an infinite stream of data by only updating the "tail" and "head" nodes as time progresses. This allows the system to maintain a fixed-size window (e.g., 56 days) with minimal recomputation latency.
+- **Efficient Reservations:** The "Solve-Commit" pattern (reserving resources) can be optimized to $O((K + \log n) \cdot W^2)$, where $K$ is the number of blocks modified. This allows for transactional updates that only affect the necessary branches of the tree.
+
+#### Theoretical Analysis
+
+This extension invites further optimization through the study of the cost functions' algebraic properties. If the carbon cost functions are convex, the $(\min, +)$ convolution can be computed in $O(W)$ time using the **Legendre-Fenchel Transform** or the **SMAWK algorithm**. This would represent a significant leap in theoretical efficiency, effectively applying a $(\min, +)$-analog of the Fast Fourier Transform. This would make the scheduler capable of handling extremely high-resolution workloads that are currently computationally prohibitive.
