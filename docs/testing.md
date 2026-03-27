@@ -1,11 +1,32 @@
 # Testing
 
-> [!DANGER]  
-> yap about hyper automation (manual testing bad)
+## Automation-First Approach
+
+A central principle of our testing and deployment practice is **automation at every level**. Manual testing — where a developer clicks through the UI, eyeballs console output, or spot-checks API responses — is slow, error-prone, and fundamentally unrepeatable. A manual tester may verify the happy path but overlook edge cases; worse, the same checks must be re-executed after every code change, a cost that scales linearly with the size of the codebase. Automated tests, by contrast, run identically every time, execute in seconds, and can be triggered on every commit without human intervention [1].
+
+Each of our three test suites embodies this principle in a different layer of the stack:
+
+- **pytest (Stats service)** — The Python test suite runs via `uv run pytest` with no manual setup. Temporary SQLite databases are created and destroyed by fixtures, API endpoints are exercised through FastAPI's `TestClient`, and property-based fuzzing generates thousands of request combinations automatically. A developer never needs to start a server, craft a request by hand, or inspect a response visually — the assertions do it all.
+
+- **Boost.Test / CTest (Scheduler)** — The C++ test suite compiles and runs through CMake's `ctest` runner. Unit tests, integration tests against a real Drogon HTTP server, and stress tests firing 30 000 concurrent coroutine requests all execute from a single command. Sanitizer presets (ASan, UBSan, TSan) are applied at compile time, catching memory and concurrency bugs that no amount of manual inspection could reliably detect.
+
+- **Playwright (UI)** — Without Playwright, verifying the UI would mean a developer manually opening each page in a browser, filling in forms, clicking buttons, checking that toasts appear, confirming that navigation works, and repeating this across every change. Playwright replaces this entirely: it launches a headless Chromium instance, programmatically navigates to each route, interacts with DOM elements through semantic selectors (`getByRole`, `getByLabel`), and asserts on visible state — all in under a minute [2]. The 25 tests across 5 spec files exercise the full-stack product end-to-end, from form submission through the C++ Scheduler to result rendering, providing the same confidence as a thorough manual walkthrough but in a fraction of the time and with perfect repeatability.
+
+### Continuous Deployment
+
+Our repository uses **GitHub Actions** [3] to automate deployment on every push to `main`. Because each workflow must successfully build a component before deploying it, a build failure halts the pipeline before the broken code ever reaches production — the deployment pipeline doubles as an automated build check:
+
+1. **Path-filtered deployment** — A coordinator workflow detects which directories have changed on each push and triggers only the relevant deployment workflows — Scheduler and UI to Azure Container Apps, Stats to its VM via SSH, and infrastructure via Bicep templates. 
+
+2. **Build checks** — Since the build step precedes the deploy step in every workflow, a compilation error in the Scheduler, a missing Python dependency in Stats, or a broken Next.js build in the UI will fail the workflow before any deployment occurs. The existing production deployment remains untouched. 
+
+3. **Container image publishing** — In parallel, the `publish-ghcr.yml` workflow builds Docker images for all three components and publishes them to the GitHub Container Registry (GHCR). A build failure here is surfaced visibly on the commit, providing an additional signal independent of the deployment pipeline.
+
+Because all of this runs automatically on push, a build breakage is surfaced within minutes and the live deployment is never replaced with broken code.
 
 ## Testing Strategy
 
-Our testing methodology follows a layered approach rooted in the **test pyramid** [1]: a broad base of fast, isolated unit tests, a middle tier of integration tests that verify component interactions, and a top layer of end-to-end and property-based tests that exercise the system as a whole. This structure ensures that defects are caught as early and as cheaply as possible, while still providing confidence that the integrated system behaves correctly.
+Our testing methodology follows a layered approach rooted in the **test pyramid** [4]: a broad base of fast, isolated unit tests, a middle tier of integration tests that verify component interactions, and a top layer of end-to-end and property-based tests that exercise the system as a whole. This structure ensures that defects are caught as early and as cheaply as possible, while still providing confidence that the integrated system behaves correctly.
 
 Every test is **deterministic and repeatable**. The Scheduler tests run under the Boost.Test framework with CMake/CTest, the Stats service uses pytest, and the UI uses Playwright for end-to-end browser automation. Each suite can be executed with a single command (`ctest`, `uv run pytest`, or `npx playwright test`) and requires no manual setup beyond the standard build.
 
@@ -270,7 +291,7 @@ Using FastAPI's `TestClient`, these tests exercise every API endpoint:
 
 ### Property-Based API Fuzzing (Schemathesis)
 
-The most distinctive part of our testing strategy is **automated property-based fuzzing** using Schemathesis [2]. Rather than writing individual test cases by hand, Schemathesis reads the OpenAPI specification and automatically generates thousands of valid and invalid request combinations:
+The most distinctive part of our testing strategy is **automated property-based fuzzing** using Schemathesis [5]. Rather than writing individual test cases by hand, Schemathesis reads the OpenAPI specification and automatically generates thousands of valid and invalid request combinations:
 
 ```python
 import schemathesis
@@ -315,7 +336,7 @@ This ensures that the contract between the two services — the JSON shapes, sta
 
 ## UI End-to-End Testing (Playwright)
 
-The frontend is a Next.js/React application that serves as the primary user-facing interface for job submission, schedule visualisation, and data center governance. Because the UI orchestrates interactions across multiple backend services — form submissions trigger the C++ Scheduler, while calendar views consume Stats forecasts — defects at this layer directly impact the user experience. To ensure correctness across the full browser stack, we employ **Playwright** [3] for automated end-to-end testing against a live development server.
+The frontend is a Next.js/React application that serves as the primary user-facing interface for job submission, schedule visualisation, and data center governance. Because the UI orchestrates interactions across multiple backend services — form submissions trigger the C++ Scheduler, while calendar views consume Stats forecasts — defects at this layer directly impact the user experience. To ensure correctness across the full browser stack, we employ **Playwright** [2] for automated end-to-end testing against a live development server.
 
 ### Test Infrastructure
 
@@ -469,8 +490,12 @@ The suite validates:
 
 ## References
 
-[1] M. Fowler, "TestPyramid," *martinfowler.com*, 2012. [Online]. Available: <https://martinfowler.com/bliki/TestPyramid.html>
+[1] M. Fowler, "Continuous Integration," *martinfowler.com*, 2006. [Online]. Available: <https://martinfowler.com/articles/continuousIntegration.html>
 
-[2] D. Sverchkov, "Schemathesis: Property-based testing for API schemas," *GitHub*, 2023. [Online]. Available: <https://github.com/schemathesis/schemathesis>
+[2] Microsoft, "Playwright: Fast and reliable end-to-end testing for modern web apps," *GitHub*, 2024. [Online]. Available: <https://github.com/microsoft/playwright>
 
-[3] Microsoft, "Playwright: Fast and reliable end-to-end testing for modern web apps," *GitHub*, 2024. [Online]. Available: <https://github.com/microsoft/playwright>
+[3] GitHub, "Understanding GitHub Actions," *GitHub Docs*, 2024. [Online]. Available: <https://docs.github.com/en/actions/about-github-actions/understanding-github-actions>
+
+[4] M. Fowler, "TestPyramid," *martinfowler.com*, 2012. [Online]. Available: <https://martinfowler.com/bliki/TestPyramid.html>
+
+[5] D. Sverchkov, "Schemathesis: Property-based testing for API schemas," *GitHub*, 2023. [Online]. Available: <https://github.com/schemathesis/schemathesis>
