@@ -62,7 +62,7 @@ This upcoming presentation is not a mere dissemination of academic research. The
 
 - **Maks**
 
-    ![Max](images/maks.jpg)
+    ![Max](images/maks.jpg){ width=60% }
 
     Lead Thread-Safety Violator & Part-time Suit-Wearer
 
