@@ -95,9 +95,19 @@ This ensures the optimization engine operates on universal metrics (Compute in F
 
 The scheduler requires a strictly "frozen" snapshot of infrastructure state (existing reservations and available capacity) to ensure mathematical correctness. Concurrent processing of two schedules would create a data race where multiple instances assume some same free capacity, leading to over-provisioning and infeasible deployment plans.
 
-We resolved this by serializing scheduling computations through a **lock-free coroutine queue**. This architecture decouples the optimization hot-path from the HTTP event loop, allowing the system to queue requests and process them sequentially without compromising API responsiveness.
+We resolved this by serializing individual scheduling computations through a **lock-free coroutine queue**. This architecture decouples the optimization hot-path from the HTTP event loop, allowing the system to process requests sequentially while remaining responsive to concurrent API traffic.
+
+#### Design Rationale: Sequential Cooperative Scheduling
+
+While the optimization engine is compute-intensive, the overall scheduling workflow is a mix of I/O-bound data fetching and CPU-bound calculation. By implementing scheduling tasks as C++20 coroutines, we achieved several architectural goals:
+
+* **Cooperative Yielding**: Tasks can suspend during I/O boundaries (e.g., awaiting carbon forecasts or database snapshots), yielding the background thread to other queued tasks.
+* **Zero-Lock Serialization**: The queue ensures that while multiple tasks can be "in-flight" (suspended awaiting data), only one coroutine instance enters the critical DP computation at a time. This guarantees a stable resource snapshot without the overhead of global mutexes.
+* **Event Loop Integrity**: By offloading the queue to background worker threads, we ensure that 9-billion-transition optimizations never block the main HTTP event loop, preserving low-latency responses for other API endpoints.
 
 #### The Producer-Consumer Pattern
+
+We designed the `SchedulingQueue` as a bridge where the HTTP thread (the producer) pushes a `SchedulerTask` and immediately yields, while a background coroutine (the consumer) pops and executes them.
 
 We designed the `SchedulingQueue` as a bridge where the HTTP thread (the producer) pushes a `SchedulerTask` and immediately yields, while a background coroutine (the consumer) pops and executes them.
 
@@ -160,19 +170,11 @@ auto resume() {
 
 This guarantees that the continuation handle is never lost and ensures immediate response hand-off once computation completes.
 
-### 3. Execution Orchestration (`SchedulerBase`)
+### 3. Orchestration & Data Integration
 
-Scheduling bridges I/O-bound data fetching with CPU-intensive optimization. We implemented the execution lifecycle as a chain of **cooperative coroutines** rather than a traditional thread-per-request model, allowing us to manage complex orchestration while maintaining the strict serialization required by the engine.
+Scheduling bridges I/O-bound data fetching with CPU-intensive optimization. `SchedulerBase` implements the execution lifecycle as a chain of **cooperative coroutines** rather than a traditional thread-per-request model, allowing us to manage complex data gathering while maintaining the strict serialization required by the engine.
 
-#### The Coroutine Queue Rationale
-
-The identity of the `SchedulingQueue` as a **"coroutine queue"** is fundamental to our orchestration strategy. By defining scheduling tasks as C++20 coroutines, we achieved three primary objectives:
-
-* **Cooperative Yielding**: Tasks can suspend during I/O-bound operations (e.g., awaiting regional carbon forecasts) and resume only when data is ready. This allows the background worker to yield execution instead of idling or blocking an OS thread.
-* **Serialized Engine Access**: The optimization engine requires a strictly "frozen" infrastructure snapshot. The queue ensures that while multiple tasks can be suspended awaiting data, only a single coroutine instance enters the DP computation hot-path at any time, eliminating the need for complex mutex-based locking.
-* **Event Loop Integrity**: By offloading the serialized execution to a background coroutine loop, we prevent expensive DP calculations from "hogging" the main thread. This ensures that the REST API remains responsive to concurrent requests even while a 9-billion-transition optimization is in progress.
-
-#### The Non-Virtual Interface (NVI) Pattern
+#### Non-Virtual Interface (NVI) Pattern
 
 We enforced a standard execution template across all implementations using the **Non-Virtual Interface (NVI)** pattern. This ensures that validation and data orchestration are centralized in the base class rather than being duplicated across subclasses.
 
@@ -191,24 +193,81 @@ This pattern provides a stable entry point for the `SchedulingQueue` while guara
 
 #### Concurrent Data Fetching
 
-Before triggering the solver, `SchedulerBase` harmonizes internal and external state via the `fetch_data` coroutine. We parallelized these disparate I/O sources using our custom `when_all` combinator to minimize total latency:
+Before triggering the solver, `SchedulerBase` harmonizes internal and external state via the `fetch_data` coroutine. We parallelized these disparate I/O sources using our custom `when_all` combinator (discussed in a later section) to minimize total latency:
 
 ```cpp
-// Parallelize HTTP (Stats API) and Database (Calendar) requests
+// getAllDatacenters() and calendar::get() run in parallel
 const auto [locations, existing_schedule] = co_await coro::when_all(
     stats_api.getAllDatacenters(job.preferred_datacenter, interval),
-    calendar::get(time_start, time_end));
+    calendar::get(time_start, time_end)
+);
 ```
 
 #### Temporal Alignment (`TIME_GRIDDER`)
 
-External data arrives in heterogeneous granularities (30-minute carbon windows vs. hourly weather metrics). We developed the `TIME_GRIDDER` utility to discretize these physical timestamps onto a uniform **5-minute integer grid**.
+The optimization algorithm operates on dense arrays where each index represents a discrete time interval. While external data points are associated with explicit timestamps, using these directly in the scheduling engine would be computationally inefficient and prone to alignment errors.
 
-By mapping `std::chrono::time_point`s to discrete indices relative to a universal epoch, we transformed costly date-time arithmetic into constant-time array indexing. This normalization allowed the optimization engine to operate on contiguous memory buffers, significantly improving cache locality by replacing physical time checks with integer offset lookups in the memoization tables.
+We implemented `TIME_GRIDDER` as a global singleton instance to provide a consistent mapping between real-world timestamps and integer indices. By using the Unix epoch as a universal "alignment" point, the utility ensures that every 5-minute interval is anchored identically across the entire system. This eliminates ambiguity in how the grid aligns with real time, allowing the scheduler to reliably transform `std::chrono::time_point` values into constant-time array offsets while maintaining strict temporal synchronization between disparate data sources.
 
-### 4. Persistence & Global State (`Calendar`)
+### 4. The Optimization Engine (`SchedulerAlgo`)
 
-We utilize a PostgreSQL database as the authoritative source of "Infrastructure State." The `Calendar` sub-system manages all interactions with the backend, ensuring that every scheduling decision is backed by a persistent resource reservation.
+The engine core implements a custom Dynamic Programming (DP) algorithm designed to minimize carbon emissions across distributed infrastructure. We partitioned the solver into two distinct stages to manage the high-dimensional state space.
+
+#### Mathematical Formulation
+
+We modeled the scheduling request as a resource allocation problem over $n$ discrete time blocks. For each block $i$, we define an existing load $l_i$, a maximum capacity $r_i$, and a non-decreasing cost function $c_i(load)$.
+
+A key constraint is the **non-continuous run penalty** $P$. If a job starts a new execution run after being idle, it incurs an additional workload penalty (modeling BIOS boot energy and model loading). We solved this by defining **effective work** $E$:
+$$\sum w_i - k \cdot P \geq W$$
+where $k$ is the number of contiguous runs and $W$ is the requested workload. The DP state $dp[i][w][state]$ represents the minimum cost to achieve effective work $w$ using the first $i$ blocks, with $state \in \{active, idle\}$.
+
+#### Layered Dynamic Programming
+
+| Phase | Scope | Algorithm |
+| :--- | :--- | :--- |
+| **Temporal (`calc_single`)** | Single Datacenter | 2D DP solving optimal allocation across the 7-day time horizon while enforcing the $P$ penalty. |
+| **Spatial (`calc_multiple`)** | Multi-Region | Solves a **Multiple-Choice Knapsack Problem** to distribute the total workload across regional cost curves. |
+
+#### Parallel Execution Strategy
+
+We optimized the spatial phase for multi-core architectures by parallelizing independent solver instances. We utilize `std::async` to trigger regional temporal solvers concurrently, achieving near-linear speedup. Furthermore, the knapsack merge phase parallelizes row-wise DP updates using C++ execution policies:
+
+```cpp
+// Parallel row-wise update of the knapsack DP table
+for_each(execution::par_unseq, w_range.begin(), w_range.end(),
+         [&](const auto w) {
+             for (const auto k : views::iota(0, w + 1)) {
+                 // ... update next_dp[w] with min cost
+             }
+         });
+```
+
+#### Instruction-Level Optimizations (SIMD)
+
+The temporal solver handles upwards of **9 billion transitions** for a worst-case request. We eliminated the resulting latency through instruction-level engineering:
+
+* **Data Layout (SoA)**: We refactored memoization tables from **Array of Structs (AoS)** to **Struct of Arrays (SoA)**. By grouping fields like `costs` and `parents` into contiguous memory, we reduced L1 cache misses by ~25% as the CPU no longer loads irrelevant reconstruction metadata during the cost-update hot-path.
+* **SIMD Vectorization**: We manually vectorized the innermost DP transition loop using **AVX2 and AVX512 intrinsics**.
+
+```cpp
+// SIMD vectorized transition: 8 floating-point ops per cycle
+const auto add_cost = _mm512_loadu_pd(&cost_table[wi]);
+const auto new_cost = _mm512_add_pd(prevxV, add_cost);
+const auto row0V = _mm512_loadu_pd(&row0[targetRowIndex]);
+
+// Branchless update using mask-based stores
+const auto mmask = _mm512_cmp_pd_mask(new_cost, row0V, _CMP_LT_OS);
+if (mmask) {
+    _mm512_mask_storeu_pd(&row0[targetRowIndex], mmask, new_cost);
+    _mm256_mask_storeu_epi32(&memo_entry.alloc[targetRowIndex], mmask, wiV);
+}
+```
+
+* **Aligned Allocation**: We utilized `boost::alignment::aligned_allocator` to ensure DP vectors are boundary-aligned with the 64-byte width of AVX512 registers, avoiding the performance penalties of unaligned memory access.
+
+### 5. Persistence & Global State (`Calendar`)
+
+After the engine computes the optimal workload distribution, the results must be persisted to provide a consistent view of future resource availability. We utilize a PostgreSQL database as the authoritative source of "Infrastructure State." The `Calendar` sub-system manages all interactions with the backend, ensuring that every scheduling decision is backed by a persistent resource reservation.
 
 #### The Data Mapper Pattern
 
@@ -232,44 +291,6 @@ By executing these inside an atomic transaction, we guarantee that no "orphaned"
 #### Comparative Evaluation
 
 To quantify the environmental benefit of our optimization, the system calculates a baseline via the `TrivialScheduler`. This schedules the job at the earliest possible window without carbon awareness. We persist both results to the database, enabling the UI to render a direct side-by-side comparison of the emissions saved.
-
-### 5. The Optimization Engine (`SchedulerAlgo`)
-
-The engine core implements a custom Dynamic Programming (DP) algorithm designed to minimize carbon emissions across distributed infrastructure. We partitioned the solver into two distinct stages to manage the high-dimensional state space.
-
-#### Layered Dynamic Programming
-
-| Phase | Scope | Core Responsibility |
-| :--- | :--- | :--- |
-| **Temporal (`calc_single`)** | Single Datacenter | Solves optimal allocation across the 7-day time horizon, evaluating per-interval capacity limits and enforcing non-continuous run penalties (startup overheads). |
-| **Spatial (`calc_multiple`)** | Multi-Region | After generating cost curves for all candidate locations, solves a **Multiple-Choice Knapsack Problem** to distribute total workload across regions for the lowest aggregate carbon footprint. |
-
-#### Parallel Solver Execution
-
-We optimized the spatial phase for multi-core architectures by parallelizing independent solver instances. By utilizing `std::async`, we trigger regional temporal solvers concurrently, achieving near-linear speedup relative to the number of candidate data centers. Additionally, we parallelized the row-wise updates of the multi-choice knapsack DP table using C++ execution policies (`std::execution::par_unseq`).
-
-#### Instruction-Level Optimizations (SIMD)
-
-Profiling with Linux `perf` revealed that a naive scalar implementation would process over **9 billion transitions** for a worst-case request. We eliminated this bottleneck through hardware-level performance engineering:
-
-* **Data Layout (SoA)**: We refactored memoization tables from **Array of Structs (AoS)** to **Struct of Arrays (SoA)**. By grouping fields like `costs` and `parents` into contiguous memory, we reduced L1 cache misses by ~25% as the CPU no longer loads irrelevant reconstruction metadata during the cost-update hot-path.
-* **SIMD Vectorization**: We manually vectorized the innermost DP transition loop using **AVX2 and AVX512 intrinsics**.
-
-```cpp
-// SIMD vectorized transition: 8 floating-point ops per cycle
-const auto add_cost = _mm512_loadu_pd(&cost_table[wi]);
-const auto new_cost = _mm512_add_pd(prevxV, add_cost);
-const auto row0V = _mm512_loadu_pd(&row0[targetRowIndex]);
-
-// Branchless update using mask-based stores
-const auto mmask = _mm512_cmp_pd_mask(new_cost, row0V, _CMP_LT_OS);
-if (mmask) {
-    _mm512_mask_storeu_pd(&row0[targetRowIndex], mmask, new_cost);
-    _mm256_mask_storeu_epi32(&memo_entry.alloc[targetRowIndex], mmask, wiV);
-}
-```
-
-* **Aligned Allocation**: We utilized `boost::alignment::aligned_allocator` to ensure DP vectors are boundary-aligned with the 64-byte width of AVX512 registers, avoiding the performance penalties of unaligned memory access.
 
 ### 6. Data Structure Design
 
