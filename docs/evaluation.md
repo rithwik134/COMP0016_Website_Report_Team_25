@@ -259,7 +259,7 @@ The contrast with the baseline flame graph is striking. Where the scalar baselin
 | `MemoEntry` struct copies | ~7% | 0% | Eliminated by SoA layout (contiguous scalar arrays) |
 | Vector reallocation (`_M_realloc_insert`) | ~7% | 0% | Eliminated by pre-allocated buffers |
 | Cost function hash lookups | ~6% | 0% | Replaced by precomputed lookup table |
-| **`calc_single` self (useful computation)** | **~42%** | **~85%** | SIMD vectorization + branchless logic |
+| **`calc_single` self (useful computation)** | **\~42%** | **\~85%** | SIMD vectorization + branchless logic |
 
 ### Conclusion on Execution Latency
 

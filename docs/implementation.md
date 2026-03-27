@@ -166,7 +166,7 @@ Before initiating the hardware-level optimizations, we profiled the initial scal
 2. **Instruction Throughput:** The DP hot-path accounted for over 60% of total CPU time, operating at a poor 0.85 instructions per cycle (IPC) due to complex scalar branching.
 3. **Allocator Contention:** Dynamic memory allocations (`operator new`/`delete`) inside the innermost loops consumed roughly 22% of the execution time.
 
-To visualize where these bottlenecks manifested in the call stack, we generated an interactive flame graph from the same profiling session. The graph reveals that while `calc_single` (the core DP solver) accounted for **~90% of inclusive time**, only **~42% was actual computation** — the rest was overhead from the naive data layout and allocation patterns:
+To visualize where these bottlenecks manifested in the call stack, we generated an interactive flame graph from the same profiling session. The graph reveals that while `calc_single` (the core DP solver) accounted for **\~90% of inclusive time**, only **\~42% was actual computation** — the rest was overhead from the naive data layout and allocation patterns:
 
 [**Open Interactive Flame Graph — Before Optimization (Scalar Baseline)**](images/benchmarks/flamegraph_before.svg){ target="_blank" }
 *Hover over frames for sample counts and self-percentages; click to zoom into a subtree; Ctrl+F to search. The wide bars under `calc_single` represent overhead that the optimizations below systematically eliminated.*
@@ -193,7 +193,7 @@ By grouping similar data types (like allocation units and state flags) into cont
 To streamline the innermost loops and address the remaining non-computational overhead, we focused on two micro-optimizations:
 
 1. **Precomputation**: We identified that cost function values were being recalculated across different branches — the **~6% `cost_lookup`** overhead in the flame graph. We implemented a precomputation step that stores these values in a local table, replacing expensive `std::unordered_map` hash-table lookups with constant-time memory indexing.
-2. **Allocation Removal**: We eliminated the **~22% `operator new` / `operator delete`** overhead by removing all dynamic memory allocations from the hot-path. The DP tables are now pre-allocated once using aligned memory (`posix_memalign`) and reused across iterations, completely eliminating the per-transition allocator overhead and the associated **~7% vector reallocation** cost.
+2. **Allocation Removal**: We eliminated the **\~22% `operator new` / `operator delete`** overhead by removing all dynamic memory allocations from the hot-path. The DP tables are now pre-allocated once using aligned memory (`posix_memalign`) and reused across iterations, completely eliminating the per-transition allocator overhead and the associated **\~7% vector reallocation** cost.
 
 Together, these refinements removed approximately 35% of the baseline execution time that was spent entirely on memory management rather than useful computation.
 
@@ -324,11 +324,11 @@ The 30-minute cycle aligns with the API's publication schedule — new carbon da
 
 ### Sequential Prediction Processing
 
-Although the service runs three background threads concurrently (collector, sync, and prediction loop), the Prediction Loop itself processes data centres **sequentially** rather than spawning parallel threads per data centre. This is a deliberate constraint driven by memory: each data centre's cold-start training constructs a feature matrix of ~2 million rows × 65 columns, consuming approximately **1 GB of RAM**. Parallelising predictions across all 14 registered data centres would require up to 14 GB of concurrent memory, risking out-of-memory conditions on the deployment instance. Sequential processing caps peak memory to a single data centre's training footprint at any given time, and the [incremental training mechanism](#incremental-training-via-sufficient-statistics) ensures that after the initial cold start, each subsequent cycle's memory overhead is negligible (~58 KB per new reading).
+Although the service runs three background threads concurrently (collector, sync, and prediction loop), the Prediction Loop itself processes data centres **sequentially** rather than spawning parallel threads per data centre. This is a deliberate constraint driven by memory: each data centre's cold-start training constructs a feature matrix of \~2 million rows × 65 columns, consuming approximately **1 GB of RAM**. Parallelising predictions across all 14 registered data centres would require up to 14 GB of concurrent memory, risking out-of-memory conditions on the deployment instance. Sequential processing caps peak memory to a single data centre's training footprint at any given time, and the [incremental training mechanism](#incremental-training-via-sufficient-statistics) ensures that after the initial cold start, each subsequent cycle's memory overhead is negligible (\~58 KB per new reading).
 
 ### Incremental Training via Sufficient Statistics
 
-Training the Ridge model from scratch involves constructing a feature matrix from the entire historical series (~17,500 rows for a year of 30-minute data, expanded to ~2 million training samples via the direct multi-step strategy described below). Rebuilding this matrix every 30 minutes would spike RAM usage to ~1 GB per datacenter — an unnecessary cost given that only one or two new readings arrive each cycle.
+Training the Ridge model from scratch involves constructing a feature matrix from the entire historical series (\~17,500 rows for a year of 30-minute data, expanded to \~2 million training samples via the direct multi-step strategy described below). Rebuilding this matrix every 30 minutes would spike RAM usage to \~1 GB per datacenter — an unnecessary cost given that only one or two new readings arrive each cycle.
 
 To avoid this, the service uses **incremental Ridge updates** based on cached sufficient statistics. Ridge regression has a closed-form solution:
 
@@ -350,7 +350,7 @@ Each datacenter's model state is stored in an in-memory dictionary containing:
 The prediction cycle works in two modes:
 
 1. **Cold start** (first run per datacenter): builds the full ~2M-row feature matrix, fits `RidgeCV` to select $\alpha$, and caches the sufficient statistics and scaler. This runs under a threading lock with a double-check pattern to prevent duplicate work across threads.
-2. **Warm update** (new data arrived, `n_train` increased): builds feature rows only for the new data points, transforms them using the frozen scaler, and accumulates them into the existing Gram matrix and cross-product. Re-solving the $65 \times 65$ system is instantaneous. For a single new 30-minute reading, this produces ~112 rows $\times$ 65 columns $\approx$ **58 KB** of new data — versus ~1 GB for a full rebuild.
+2. **Warm update** (new data arrived, `n_train` increased): builds feature rows only for the new data points, transforms them using the frozen scaler, and accumulates them into the existing Gram matrix and cross-product. Re-solving the $65 \times 65$ system is instantaneous. For a single new 30-minute reading, this produces \~112 rows $\times$ 65 columns $\approx$ **58 KB** of new data — versus \~1 GB for a full rebuild.
 
 This design ensures that after the one-time cold start, the service never rebuilds the full training matrix. Every subsequent 30-minute cycle processes only the incremental data, keeping peak memory usage low and retraining effectively instant.
 
