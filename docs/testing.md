@@ -1,5 +1,8 @@
 # Testing
 
+> [!DANGER]  
+> yap about hyper automation (manual testing bad)
+
 ## Testing Strategy
 
 Our testing methodology follows a layered approach rooted in the **test pyramid** [1]: a broad base of fast, isolated unit tests, a middle tier of integration tests that verify component interactions, and a top layer of end-to-end and property-based tests that exercise the system as a whole. This structure ensures that defects are caught as early and as cheaply as possible, while still providing confidence that the integrated system behaves correctly.
@@ -466,8 +469,8 @@ The suite validates:
 
 ## References
 
-[1] M. Fowler, "TestPyramid," *martinfowler.com*, 2012. [Online]. Available: https://martinfowler.com/bliki/TestPyramid.html
+[1] M. Fowler, "TestPyramid," *martinfowler.com*, 2012. [Online]. Available: <https://martinfowler.com/bliki/TestPyramid.html>
 
-[2] D. Sverchkov, "Schemathesis: Property-based testing for API schemas," *GitHub*, 2023. [Online]. Available: https://github.com/schemathesis/schemathesis
+[2] D. Sverchkov, "Schemathesis: Property-based testing for API schemas," *GitHub*, 2023. [Online]. Available: <https://github.com/schemathesis/schemathesis>
 
-[3] Microsoft, "Playwright: Fast and reliable end-to-end testing for modern web apps," *GitHub*, 2024. [Online]. Available: https://github.com/microsoft/playwright
+[3] Microsoft, "Playwright: Fast and reliable end-to-end testing for modern web apps," *GitHub*, 2024. [Online]. Available: <https://github.com/microsoft/playwright>

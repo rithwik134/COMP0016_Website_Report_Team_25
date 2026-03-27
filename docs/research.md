@@ -1,8 +1,18 @@
 # Research
 
+> [!DANGER]  
+> needs some context / intro (brief!!!) relating the big picture of our project to the subsequent research areas.
+
+> [!DANGER]  
+> REVIEW OF ANOTHER SOFTWARE (existing similar solutions) is REQUIRED (at least one other)  
+> also need technology review (review relevant technologies and tech stacks type kind stuff)
+>
+> NEEDS IEEE references (make sure links work and stuff)
+
 ## Hardware Research
 
 ### 1.1 Hardware Specification References
+
 This research provides a technical breakdown of the hardware constants and energy-to-computation formulas used in the `hardwareConversion` module. The module facilitates energy-aware scheduling by converting physical power metrics into computational work units (FLOPS).
 
 ```cpp
@@ -12,14 +22,16 @@ This research provides a technical breakdown of the hardware constants and energ
 The scheduler utilizes specifications for two primary NVIDIA data center GPUs. The values in our `HW_LIB` are derived from official NVIDIA technical briefs.
 
 #### **NVIDIA Tesla V100 (PCIe)**
-*   **TDP (250W):** The Thermal Design Power represents the maximum power the GPU is expected to consume under heavy workloads.
-*   **Performance (15.7 TFLOPS FP32):** Standard single-precision performance.
-*   **Reference:** [NVIDIA V100 Datasheet](https://images.nvidia.com/content/technologies/volta/pdf/volta-v100-datasheet-update-us-1165301-r5.pdf)
+
+* **TDP (250W):** The Thermal Design Power represents the maximum power the GPU is expected to consume under heavy workloads.
+* **Performance (15.7 TFLOPS FP32):** Standard single-precision performance.
+* **Reference:** [NVIDIA V100 Datasheet](https://images.nvidia.com/content/technologies/volta/pdf/volta-v100-datasheet-update-us-1165301-r5.pdf)
 
 #### **NVIDIA A100 (SXM4)**
-*   **TDP (400W):** The SXM4 form factor allows for higher power delivery and thermal headroom compared to PCIe.
-*   **Performance (19.5 TFLOPS FP32):** Non-tensor core peak performance for standard FP32 operations.
-*   **Reference:** [NVIDIA A100 Datasheet](https://www.nvidia.com/content/dam/en-zz/Solutions/Data-Center/a100/pdf/nvidia-a100-datasheet-us-nvidia-1758950-r4-web.pdf)
+
+* **TDP (400W):** The SXM4 form factor allows for higher power delivery and thermal headroom compared to PCIe.
+* **Performance (19.5 TFLOPS FP32):** Non-tensor core peak performance for standard FP32 operations.
+* **Reference:** [NVIDIA A100 Datasheet](https://www.nvidia.com/content/dam/en-zz/Solutions/Data-Center/a100/pdf/nvidia-a100-datasheet-us-nvidia-1758950-r4-web.pdf)
 
 ---
 
@@ -39,13 +51,13 @@ The scheduler utilizes specifications for two primary NVIDIA data center GPUs. T
 
 The `model_size` (GB) and `length` (minutes) parameters allow the scheduler to estimate the energy cost of specific AI workloads.
 
-*   **Average Model Sizes:**
-    *   **ResNet-50 / Computer Vision:** ~0.1 - 0.5 GB (Low transfer overhead).
-    *   **BERT-Base / Medium NLP:** ~0.4 - 1.0 GB.
-    *   **Llama-3-8B (Quantized):** ~5.0 - 8.0 GB.
-    *   **Large Language Models (LLMs):** 40GB+ (Significant `e_load` energy required).
+* **Average Model Sizes:**
+  * **ResNet-50 / Computer Vision:** ~0.1 - 0.5 GB (Low transfer overhead).
+  * **BERT-Base / Medium NLP:** ~0.4 - 1.0 GB.
+  * **Llama-3-8B (Quantized):** ~5.0 - 8.0 GB.
+  * **Large Language Models (LLMs):** 40GB+ (Significant `e_load` energy required).
 
-*   **Computational Translation:**
+* **Computational Translation:**
     The function `calculate_flo_per_kwh` translates physical energy into "Computational Currency":
     $$\text{FLO per kWh} = \text{Effectiveness} \times \frac{\text{TFLOPS} \times 10^{12} \times 3600}{\text{TDP} / 1000}$$
     This allows the scheduler to compare the "Green Efficiency" of different hardware generations.
@@ -57,22 +69,28 @@ The `model_size` (GB) and `length` (minutes) parameters allow the scheduler to e
 The scheduler breaks down a job into three distinct energy phases:
 
 #### **A. Startup Phase (`get_startup_energy_kwh`)**
+
 Divided into the **BIOS Phase** (high fan usage) and **OS Phase** (base system + container initialization). This is a fixed cost regardless of the task length.
-*   *V100 Estimate:* ~0.02 - 0.04 kWh per boot.
+
+* *V100 Estimate:* ~0.02 - 0.04 kWh per boot.
 
 #### **B. Model Loading Phase (`get_load_energy_kwh`)**
-Calculates the energy used while the `bus_gbps` (PCIe Gen3 vs NVLink) transfers the model into VRAM. 
-*   **Formula:** $\text{Power}_{\text{load}} \times (\text{Model Size} / \text{Bus Speed})$.
+
+Calculates the energy used while the `bus_gbps` (PCIe Gen3 vs NVLink) transfers the model into VRAM.
+
+* **Formula:** $\text{Power}_{\text{load}} \times (\text{Model Size} / \text{Bus Speed})$.
 
 #### **C. Execution Phase (`get_workload_amount`)**
+
 The active computation phase. The total "work" is defined as the total FLOPS capable of being produced during the requested `length` at full power.
 
 ### 1.5 Summary of Calculated Outputs
 
 When `convertRawJobRequest` is called, it returns:
-1.  **Startup Overhead:** The energy "tax" of booting and loading the model, expressed in FLOPS.
-2.  **Workload Amount:** The total computational "budget" of the job.
-3.  **kWh per FLO:** The inverse efficiency, used to calculate the final carbon footprint or electricity cost of the specific hardware-workload pairing.
+
+1. **Startup Overhead:** The energy "tax" of booting and loading the model, expressed in FLOPS.
+2. **Workload Amount:** The total computational "budget" of the job.
+3. **kWh per FLO:** The inverse efficiency, used to calculate the final carbon footprint or electricity cost of the specific hardware-workload pairing.
 
 ---
 
@@ -86,9 +104,9 @@ This section presents the research behind our choice of production forecasting m
 
 There are two fundamentally different ways to produce multi-step forecasts:
 
-- **Recursive forecasting**: Predict 30 minutes ahead, then feed that prediction back as input to predict 60 minutes ahead, and so on 336 times. The problem is **error compounding** -- if step 1 is slightly wrong, step 2 uses that wrong value as input, making it even more wrong, and the error snowballs over 336 steps. Tree-based models (XGBoost, CatBoost, LightGBM) and transformers were tested this way and suffered badly.
+* **Recursive forecasting**: Predict 30 minutes ahead, then feed that prediction back as input to predict 60 minutes ahead, and so on 336 times. The problem is **error compounding** -- if step 1 is slightly wrong, step 2 uses that wrong value as input, making it even more wrong, and the error snowballs over 336 steps. Tree-based models (XGBoost, CatBoost, LightGBM) and transformers were tested this way and suffered badly.
 
-- **Direct forecasting** (what RidgeFull uses): Train a single model that takes the **horizon step number** as an input feature alongside all other features. To predict step 100, the model receives `h=100` as a feature and predicts directly from historical data -- it never uses its own past predictions as input. Each horizon step is independent, so errors at one step cannot affect others.
+* **Direct forecasting** (what RidgeFull uses): Train a single model that takes the **horizon step number** as an input feature alongside all other features. To predict step 100, the model receives `h=100` as a feature and predicts directly from historical data -- it never uses its own past predictions as input. Each horizon step is independent, so errors at one step cannot affect others.
 
 #### Feature Groups
 
@@ -106,10 +124,10 @@ The production model's 65 input features fall into five groups:
 
 #### Other Key Terms
 
-- **MAE (Mean Absolute Error)**: The primary accuracy metric. The average of |predicted - actual| across all predictions. An MAE of 24.88 means on average, predictions are ~25 gCO2/kWh away from the true value.
-- **CV (Coefficient of Variation)**: Standard deviation divided by mean. Measures how volatile a region's carbon intensity is relative to its average.
-- **StandardScaler**: Normalises each feature to have mean 0 and standard deviation 1. Without this, features with large absolute values (e.g., pressure ~1013 hPa) would dominate features with small values (e.g., wind_dir_sin in [-1, 1]).
-- **RidgeCV**: Ridge regression with built-in cross-validation for the regularisation strength (alpha), removing the need for manual tuning.
+* **MAE (Mean Absolute Error)**: The primary accuracy metric. The average of |predicted - actual| across all predictions. An MAE of 24.88 means on average, predictions are ~25 gCO2/kWh away from the true value.
+* **CV (Coefficient of Variation)**: Standard deviation divided by mean. Measures how volatile a region's carbon intensity is relative to its average.
+* **StandardScaler**: Normalises each feature to have mean 0 and standard deviation 1. Without this, features with large absolute values (e.g., pressure ~1013 hPa) would dominate features with small values (e.g., wind_dir_sin in [-1, 1]).
+* **RidgeCV**: Ridge regression with built-in cross-validation for the regularisation strength (alpha), removing the need for manual tuning.
 
 ### 2.2 Model Selection: Single Model Experiments
 
@@ -153,10 +171,10 @@ Direct models benefit most from weather because each horizon step receives its o
 
 Subsequent phases focused on closing the gap through better features and more data:
 
-- **Phase 2 (Enhanced features)**: Sparse lags and weekly periodicity features improved boosting models by up to 20.9%.
-- **Phase 3 (Residual targets)**: Predicting deviations from persistence helped high-variance models (RF, CatBoost) but not boosting models.
-- **Phase 4 (Seasonal data)**: Full-year training data pushed CatBoost to MAE 31.63 -- the first model to beat Direct-Ridge.
-- **Phase 5 (Weather enrichment)**: Extending from 3 to 11 raw weather features produced the top 5 results. Direct-XGBoost reached MAE 29.49.
+* **Phase 2 (Enhanced features)**: Sparse lags and weekly periodicity features improved boosting models by up to 20.9%.
+* **Phase 3 (Residual targets)**: Predicting deviations from persistence helped high-variance models (RF, CatBoost) but not boosting models.
+* **Phase 4 (Seasonal data)**: Full-year training data pushed CatBoost to MAE 31.63 -- the first model to beat Direct-Ridge.
+* **Phase 5 (Weather enrichment)**: Extending from 3 to 11 raw weather features produced the top 5 results. Direct-XGBoost reached MAE 29.49.
 
 ![Weather Feature Comparison](images/stats-experiments/experiments/weather_comparison.png)
 /// caption
@@ -202,10 +220,10 @@ The single largest improvement came from expanding the feature set:
 
 The best ensemble (median, MAE 24.85) improved over RidgeFull (24.88) by only **0.03 MAE** (0.1%). This marginal gain does not justify the added complexity:
 
-- **4x model maintenance**: Four models to train, debug, and monitor instead of one.
-- **MLP training latency**: 3--5 minutes per region, adding 15--25 minutes per prediction cycle for 5 regions.
-- **Non-determinism**: The MLP component produces 2--5 MAE variation between runs.
-- **Inconsistent improvement**: The ensemble sometimes hurts on specific regions where MLP or LightGBM pulls the aggregate away from Ridge's correct answer.
+* **4x model maintenance**: Four models to train, debug, and monitor instead of one.
+* **MLP training latency**: 3--5 minutes per region, adding 15--25 minutes per prediction cycle for 5 regions.
+* **Non-determinism**: The MLP component produces 2--5 MAE variation between runs.
+* **Inconsistent improvement**: The ensemble sometimes hurts on specific regions where MLP or LightGBM pulls the aggregate away from Ridge's correct answer.
 
 RidgeFull's sub-second training, full determinism, zero manual hyperparameters, and minimal dependencies make it the right choice for a production API that retrains on every 30-minute prediction cycle. This is especially important because the Stats service operates as a lightweight oracle server on shared infrastructure -- it must remain CPU-only and low-overhead to avoid competing for resources with the Scheduler and UI components. A model requiring GPU acceleration or multi-minute training cycles would be impractical in this deployment context.
 
@@ -230,11 +248,12 @@ The reasons are structural: (1) the target is a single low-dimensional time seri
 
 ### 2.6 Future Directions
 
-- **Weather forecast--training alignment**: Bridging the distribution gap between archive weather (training) and forecast weather (inference) via noise injection or training on historical forecasts.
-- **Cross-region modelling**: Joint forecasting to capture spatial correlations (e.g., wind fronts moving from North to South).
-- **Online learning**: Continuous model updates as new data arrives, adapting to regime changes faster than periodic retraining.
-- **Additional exogenous features**: Gas prices, interconnector flows, or day-ahead market data as leading indicators.
+* **Weather forecast--training alignment**: Bridging the distribution gap between archive weather (training) and forecast weather (inference) via noise injection or training on historical forecasts.
+* **Cross-region modelling**: Joint forecasting to capture spatial correlations (e.g., wind fronts moving from North to South).
+* **Online learning**: Continuous model updates as new data arrives, adapting to regime changes faster than periodic retraining.
+* **Additional exogenous features**: Gas prices, interconnector flows, or day-ahead market data as leading indicators.
 
 ### References
 
 [1] P. Bauer, A. Thorpe, and G. Brunet, "The quiet revolution of numerical weather prediction," *Nature*, vol. 525, no. 7567, pp. 47--55, Sep. 2015, doi: 10.1038/nature14956.
+
