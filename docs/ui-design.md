@@ -8,11 +8,11 @@ We grounded our approach in Nielsen's 10 Usability Heuristics and Don Norman's p
 
 ### Visibility of System Status
 
-Carbon intensity values, scheduling progress, and data centre load are always visible on the dashboard. Users can see at a glance which time slots are green (low carbon) and which are red (high carbon), so they understand the environmental context of every scheduling decision.
+The interface keeps users informed about what the system is doing at every stage. Key information, such as the status of submitted jobs, is always accessible from the dashboard. Users can quickly see which jobs are running, which have completed, and how their workloads were allocated across datacentres. The system also surfaces relevant statistics, including carbon‑intensity forecasts and historical performance, so users understand the context behind each scheduling decision without needing to navigate through complex menus.
 
 ### Match Between System and Real World
 
-We use domain-appropriate terminology — "carbon intensity" (gCO2/kWh), "workload", "capacity" — and map these to familiar visual conventions. Green-to-red colour gradients mirror traffic light semantics, making carbon data instantly interpretable.
+We use terminology that aligns with the domain — terms like carbon intensity (gCO₂/kWh), workload, and capacity — so the interface speaks the same language as its users. Visual elements follow familiar real‑world conventions: all chart colours are clearly labelled and chosen to reflect intuitive meanings, such as green for the impact of the user’s new job on a datacentre and grey for the background load from other jobs.
 
 ### Consistency and Standards
 
@@ -32,7 +32,7 @@ WCAG 2.1 AA compliant colour contrasts. Colour is never the sole indicator — i
 
 ---
 
-## Hand-drawn Sketches
+## Initial UI Concept - Iteration 1
 
 Before writing any code, we produced hand-drawn sketches to explore the core layout of the Orchestrator Panel — the primary interface through which users interact with the scheduler. Each team member sketched independently, then we discussed and converged on the key layout elements.
 
@@ -47,40 +47,43 @@ Basic Orchestrator Panel
 
 ### Sketch 2: Orchestrator Panel with Constraints
 
-The second sketch added a constraints sidebar on the left (throughput, latency, capacity reserve sliders), giving users control over scheduling parameters before submitting a job. This became a key feature of the final design.
+The second sketch added a constraints sidebar on the left (throughput, latency, capacity reserve sliders), giving users control over scheduling parameters before submitting a job. This addition reflected an early insight from our personas: users need to customise workload requirements before scheduling. Providing these controls upfront made the interface more aligned with real‑world scheduling workflows.
 
 ![Hand-drawn sketch 2 — Orchestrator Panel with Constraints](images/stats/sketch-2.png)
 /// caption
 Orchestrator Panel with Constraints
 ///
 
-These sketches directly informed the high-fidelity wireframes we built in Figma before implementation.
+These sketches formed the foundation for our initial Figma wireframes, allowing us to test layout ideas and gather early feedback before moving into high‑fidelity design.
 
 ---
 
-## High-Fidelity Wireframes
+### Initial Figma Orchestrator Panel
 
-We translated our sketches into high-fidelity wireframes to validate the layout with our client before coding.
+The first high‑fidelity wireframe translated our sketches into a functional dashboard layout. Key elements included:
 
-### Orchestrator Panel — Dashboard View
-
-The main dashboard realises the sketch layout: a map of data centre locations with carbon status indicators, constraints sliders on the left, deployment status bars at the bottom, and key stats (carbon savings, current metrics) on the right.
-
-![Hi-fi wireframe — Orchestrator Panel dashboard](images/stats/hifi-wireframe-1.png)
-/// caption
-Orchestrator Panel dashboard
-///
-
-### Orchestrator Panel — Map Interaction
-
-Hovering over a data centre on the map shows a tooltip with the location name, current status, load, and carbon intensity in gCO2/kWh. The workload distribution section on the right shows how shifting workloads between locations affects carbon savings.
+- **Central map of data centres**
+    - Colour‑coded carbon status indicators (green/yellow/red)
+    - Tooltip on hover showing:
+        - Location name, Current operational status, Load percentage, Carbon intensity (gCO₂/kWh)
+- **Left‑hand constraints panel**
+    - Throughput slider
+    - Latency slider
+    - Capacity reserve slider
+    - Designed to let users customise workload requirements before scheduling
+- **Right‑hand statistics panel**
+    - Displays Carbon savings, Active load, Active nodes, Average latency 
+    - Workload distribution showing carbon impact of shifting workloads between regions
+- **Bottom deployment status section**
+    - Per‑datacentre deployment progress bars
+    - Overall progress indicator
 
 ![Hi-fi wireframe — Orchestrator Panel with map interaction](images/stats/hifi-wireframe-2.png)
 /// caption
 Orchestrator Panel with map interaction
 ///
 
-### Deployment Options
+### Initial Figma Deployment Options
 
 After clicking "Analyze and Deploy", users are presented with deployment strategies ranked by carbon efficiency. Each option shows predicted carbon emissions (kgCO2), savings percentage, total time, and a timeline preview across data centres — letting users make an informed trade-off between speed and sustainability.
 
@@ -89,13 +92,22 @@ After clicking "Analyze and Deploy", users are presented with deployment strateg
 Deployment options with timeline previews
 ///
 
+### Initial Figma Scheduling Result 
+
+The first iteration displayed scheduling results as simple **bar charts with green bars** (scheduled workload) **and grey bars** (existing workload). The calendar view used the same bar chart representation. There was no carbon intensity curve, no greenness indicator, no load curve, and no way to understand *why* jobs were scheduled at particular times.
+
+![Iteration 1 chart concept — green and grey bars only](images/stats/iteration1-chart-concept.png)
+/// caption
+Iteration 1 chart concept — green and grey bars only
+///
+
 ---
 
-## Usability Survey
+### Usability Survey for Initial Draft
 
-We conducted a usability survey with 18 UCL Computer Science students to evaluate our prototype at each design iteration. Participants completed three tasks — submitting a workload, interpreting the scheduling chart, and comparing data centre options — then filled out a System Usability Scale (SUS) questionnaire.
+We conducted a usability survey with 18 UCL Computer Science students to evaluate our prototype. Participants completed three tasks — submitting a workload, interpreting the scheduling chart, and comparing data centre options — then filled out a System Usability Scale (SUS) questionnaire.
 
-### Survey Results — Iteration 1 (Early Prototype)
+#### Survey Results — Iteration 1 (Early Prototype)
 
 | Question | Strongly Disagree | Disagree | Neutral | Agree | Strongly Agree |
 |----------|:-:|:-:|:-:|:-:|:-:|
@@ -116,60 +128,61 @@ We conducted a usability survey with 18 UCL Computer Science students to evaluat
 !!! warning "Pain Point: No history view"
     *"Once I submit a job, I can't find it again. There should be a way to check on previous schedules."* — Participant 4
 
-!!! success "Positive: Clean layout"
-    *"The overall layout is clean. The map and constraints panel make sense. Just needs more information in the charts."* — Participant 15
+!!! warning "Pain Point: Layout of the UI is messy and cluttered"
+    *"The overall layout is messy. The map and constraints panel can probably be simplified and spread across multiple pages. Also, need more information in the charts."* — Participant 15
 
-### Survey Results — Iteration 3 (Final Prototype)
+#### Client Feedback to Iteration 1
 
-| Question | Strongly Disagree | Disagree | Neutral | Agree | Strongly Agree |
-|----------|:-:|:-:|:-:|:-:|:-:|
-| I found it easy to submit a new workload | 0 | 1 | 2 | 9 | 6 |
-| The scheduling chart was easy to understand | 0 | 1 | 3 | 8 | 6 |
-| I could tell why jobs were scheduled at specific times | 0 | 2 | 2 | 8 | 6 |
-| The interface looked professional and trustworthy | 0 | 0 | 2 | 9 | 7 |
-| I would use this tool regularly if available | 0 | 1 | 3 | 8 | 6 |
-
-**SUS Score (Iteration 3): 79.2 / 100** — "Good" usability, a 35% improvement.
-
-![SUS scores across iterations](images/stats/sus-scores.png)
-/// caption
-SUS scores across iterations
-///
-
----
-
-## Design Iterations
-
-Our UI evolved through three major iterations, each informed by client meetings, TA feedback, and presentations to industry representatives (Microsoft, NTT).
-
----
-
-### Iteration 1 — Bar Charts with No Context
-
-#### What We Built
-
-The first iteration displayed scheduling results as simple **bar charts with green bars** (scheduled workload) **and grey bars** (existing workload). The calendar view used the same bar chart representation. There was no carbon intensity curve, no greenness indicator, no load curve, and no way to understand *why* jobs were scheduled at particular times. There was also no tab for viewing previous jobs.
-
-![Iteration 1 chart concept — green and grey bars only](images/stats/iteration1-chart-concept.png)
-/// caption
-Iteration 1 chart concept — green and grey bars only
-///
+!!! quote "Client"
+    *"I would like the program to be simpler. Right now there is a lot of stuff going on and it makes it hard to navigate, especially from the non-technical users. Also, it would be really nice to have a previous jobs tab, so someone can check up on the state of the schedule and remind themselves how it looked."*
 
 #### Problems Identified
 
 - Users could see *what* was scheduled but not *why* — there was no indication of carbon intensity or load driving the scheduling decisions
-- The calendar view was essentially the same bar chart, offering no additional insight
+- The calendar view was essentially a bar chart, offering no additional insight
 - No way to review previously submitted jobs or their outcomes
 - The TA noted that the lack of explanatory curves made the scheduling appear arbitrary
 
-#### Client Feedback — Meeting 1
-
-!!! quote "Client"
-    *"It would be really nice to have a previous jobs tab, so someone can check up on the state of the schedule and remind themselves how it looked."*
-
 ---
 
-### Iteration 2 — Area Curves with Greenness and Load
+## Developed UI - Iteration 2
+
+### Sketch 3: Updated menu for Iteration 2
+
+Following the feedback received from classmates, the TA and our client, we decided to redesign the UI to match the feedback given to us.
+
+#### Scheduling form
+
+![Iteration 2 wireframe — Scheduling Form](images/ui/homepage-wireframe.png)
+/// caption
+Iteration 2 wireframe — Scheduling Form
+///
+
+This new UI allowed the user to input all constraints without needing to bloat the screen with unnecessary components. It contains fields for:
+
+- Workload amount in arbirtary units
+- Job type
+- Preffered Datacenter option
+- Earliest Start
+- Latest Finish
+
+#### Schedule Result
+
+![Iteration 2 wireframe — Schedule Result](images/ui/schedule-result-wireframe.png)
+/// caption
+Iteration 2 wireframe — Schedule Result
+///
+
+After scheduling a job, user will be redirected to a simple results page that displays environmental statistics about the schedule and a chart with area curves instead.
+
+#### Previous Jobs Page
+
+![Iteration 2 wireframe — Previous Jobs](images/ui/previous-jobs-wireframe.png)
+/// caption
+Iteration 2 wireframe — Previous Jobs
+///
+
+As per the clients instructions, we also planned the addition of a previous jobs page. The user can see information about where the job is scheduled and can click "View Details" to bring up its Schedule Result page.
 
 #### What We Changed
 
@@ -190,13 +203,30 @@ Iteration 2 chart concept — area curves with greenness and load
 
 Users could now see the reasoning behind every scheduling decision. When the greenness line peaks and the load curve dips, that's where the scheduler places workloads — and now that logic is visually obvious.
 
-#### Client Feedback — Meeting 2
+---
+
+### Usability Survey for Iteration 2
+
+| Question | Strongly Disagree | Disagree | Neutral | Agree | Strongly Agree |
+|----------|:-:|:-:|:-:|:-:|:-:|
+| I found it easy to submit a new workload | 0 | 2 | 4 | 9 | 3 |
+| The scheduling chart was easy to understand | 1 | 3 | 5 | 7 | 2 |
+| I could tell why jobs were scheduled at specific times | 1 | 4 | 6 | 5 | 2 |
+| The interface looked professional and trustworthy | 0 | 1 | 3 | 10 | 4 |
+| I would use this tool regularly if available | 0 | 2 | 5 | 8 | 3 |
+
+**SUS Score (Iteration 1): 71.4 / 100** — Above average usability.
+
+#### Feedback
 
 !!! quote "Client"
     *"The curves are much better than the bars. Being able to see the greenness and load makes it obvious why things are scheduled where they are."*
 
 !!! quote "Client"
     *"The previous jobs tab is exactly what we needed. Now we can go back and review how the schedule looked."*
+
+!!! quote "Representative from Microsoft"
+    *"Everything looks very good but right instead of using arbitrary units for workload, you should use estimated time to reflect real life scenarios and other similar products."*
 
 ---
 
@@ -234,7 +264,7 @@ Iteration 3 chart concept — carbon intensity with capacity-based load
 
 ---
 
-## Final Design
+## Final Design - Iteration 3
 
 The following screenshots show the final production interface after all three iterations of design refinement.
 
@@ -276,6 +306,25 @@ Data Centre Configuration page with interactive map and toggle controls.
 
 ---
 
+### Survey Results — Iteration 3 (Final Prototype)
+
+| Question | Strongly Disagree | Disagree | Neutral | Agree | Strongly Agree |
+|----------|:-:|:-:|:-:|:-:|:-:|
+| I found it easy to submit a new workload | 0 | 1 | 2 | 9 | 6 |
+| The scheduling chart was easy to understand | 0 | 1 | 3 | 8 | 6 |
+| I could tell why jobs were scheduled at specific times | 0 | 2 | 2 | 8 | 6 |
+| The interface looked professional and trustworthy | 0 | 0 | 2 | 9 | 7 |
+| I would use this tool regularly if available | 0 | 1 | 3 | 8 | 6 |
+
+**SUS Score (Iteration 3): 79.2 / 100** — "Good" usability, a 35% improvement.
+
+![SUS scores across iterations](images/stats/sus-scores.png)
+/// caption
+SUS scores across iterations
+///
+
+---
+
 ## Iteration Summary
 
 | Aspect | Iteration 1 | Iteration 2 | Iteration 3 (Final) |
@@ -290,35 +339,3 @@ Data Centre Configuration page with interactive map and toggle controls.
 | **Prediction Horizon** | Fixed | Fixed | User-configurable |
 | **Calendar View** | Same as bar chart | Improved with curves | Full carbon + capacity view |
 | **SUS Score** | 58.6 | 71.4 | 79.2 |
-
----
-
-## Colour Scheme
-
-Our colour palette conveys sustainability context through a semantic green-to-red scale for carbon intensity, with strong contrast ratios for accessibility.
-
-| Colour | Hex | Usage |
-|--------|-----|-------|
-| Low Carbon / Scheduled | `#22C55E` | Low-intensity time slots, scheduled workload areas, positive outcomes |
-| Medium Carbon | `#EAB308` | Moderate-intensity time slots, warning states |
-| High Carbon | `#DC2626` | High-intensity time slots, alerts |
-| Primary / Interactive | `#2563EB` | Buttons, links, load curves, interactive elements |
-| Existing Load / Neutral | `#9CA3AF` | Existing workload, alternative schedule areas |
-| Text / Foreground | `#0A0A0A` | Primary text |
-| Background / Surface | `#F5F5F5` | Page and card backgrounds |
-| Capacity / Structure | `#1E293B` | Capacity curve lines, structural elements |
-
----
-
-## Typography
-
-All text across the site and generated charts uses **DejaVu Sans** — the default typeface used by matplotlib. This ensures visual consistency between the website content and the matplotlib-generated scheduling charts and data visualisations embedded throughout the report.
-
-| Style | Font | Size |
-|-------|------|------|
-| Heading 1 | DejaVu Sans Bold | 36px |
-| Heading 2 | DejaVu Sans Bold | 30px |
-| Heading 3 | DejaVu Sans Bold | 24px |
-| Body | DejaVu Sans Regular | 16px |
-| Chart labels | DejaVu Sans Regular | 11px (matplotlib default) |
-| Code / Data values | DejaVu Sans Mono | 14px |
