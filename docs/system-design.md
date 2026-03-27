@@ -9,32 +9,26 @@ The Carbon-Aware AI Agent is composed of three decoupled components communicatin
 config:
   layout: elk
 ---
-flowchart TB
+flowchart
  subgraph External_Group["External Data Sources"]
-    direction LR
         Grid["Grid Carbon Intensity"]
         Weather["Weather Data"]
         DC_State["DC Load & Capacity"]
-        Costs["<b>Cost Context</b><br>$$ per Compute Unit"]
   end
  subgraph UI_Comp["UI Component"]
-    direction TB
         UI_In["Input Handler"]
         UI_View["Dashboard / Visualizer"]
   end
  subgraph Sched_Comp["Scheduler Component"]
-    direction TB
         Solver["<b>Logic Core</b><br>Constraint Solver"]
   end
  subgraph Stats_Comp["Stats Component"]
-    direction TB
         Ingest["Data Ingestion"]
         DB[("History DB")]
         Forecast["Forecasting Engine"]
         Norm["Normalizer / API Interface"]
   end
  subgraph System["Software System"]
-    direction TB
         UI_Comp
         Sched_Comp
         Stats_Comp
@@ -51,14 +45,12 @@ flowchart TB
     Grid ==> Ingest
     Weather ==> Ingest
     DC_State ==> Ingest
-    Costs ==> Ingest
     Solver -- "2. Query State" --> Norm
     Norm -. "3. Normalized Forecasts" .-> Solver
 
      Grid:::external
      Weather:::external
      DC_State:::external
-     Costs:::external
      UI_In:::internal
      UI_View:::internal
      Solver:::internal
@@ -68,12 +60,6 @@ flowchart TB
      Norm:::internal
      User:::actor
      JobSpec:::dataNode
-    classDef component fill:#e1bee7,stroke:#4a148c,stroke-width:2px
-    classDef internal fill:#ffffff,stroke:#7b1fa2,stroke-width:1px
-    classDef database fill:#fff9c4,stroke:#fbc02d,stroke-width:1px
-    classDef actor fill:#ffffff,stroke:#000000,stroke-width:1px
-    classDef external fill:#eeeeee,stroke:#999999,stroke-width:1px,stroke-dasharray: 4 4
-    classDef dataNode fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
 ```
 
 /// caption
@@ -380,4 +366,3 @@ Semantic Data Model showing the relationship between a high-level Job, its optim
 ///
 
 The fundamental atomic unit is the **Workload Block**, representing a 5-minute slice of compute time. A complete **Schedule** is formed by a collection of these blocks distributed across time and space (datacenters). Each schedule is measured by its **Environmental Impact**, allowing the user to compare the carbon footprint of the solver's optimal placement against a trivial baseline.
-
