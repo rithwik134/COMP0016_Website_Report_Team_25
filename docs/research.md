@@ -1,102 +1,79 @@
 # Research
 
-> [!DANGER]  
-> needs some context / intro (brief!!!) relating the big picture of our project to the subsequent research areas.
+To build a highly efficient, carbon-aware scheduling system, we had to address three interdependent technical domains: software architecture, hardware energy modeling, and environmental forecasting. Before implementation, it was critical to define these elements to avoid technical debt and ensure the final product could meet strict performance and accuracy requirements. This section details our comparative research into existing solutions, the justification for our C++ and microservices technology stack, and the empirical selection process for our carbon prediction model.
 
-> [!DANGER]  
-> REVIEW OF ANOTHER SOFTWARE (existing similar solutions) is REQUIRED (at least one other)  
-> also need technology review (review relevant technologies and tech stacks type kind stuff)
->
-> NEEDS IEEE references (make sure links work and stuff)
+## Related Projects Review
+To gather inspiration and understand the current industry standards, we analyzed the Green Software Foundation (GSF) Carbon Aware SDK [1]. Developed primarily by NTT Data in cooperation with other foundation members, this SDK is the current gold standard for carbon-aware scheduling and is used by numerous enterprises to reduce their emissions. The SDK is predominantly built using C# and the .NET framework. 
 
-## Hardware Research
+Their scheduling solution is relatively simple yet surprisingly effective: it selects a single continuous time interval of a requested length that offers the minimal average carbon intensity. If multiple data centers are provided, it selects the location with the best environmental outcome. However, we found this "single continuous interval" approach too restrictive for our specific use case. Research indicates that AI workloads are highly parallelizable [2]. This characteristic allows such workloads to be split into multiple discrete, continuous intervals, meaning the scheduling algorithm can be much more flexible and environmentally efficient than standard single-interval methods.
 
-### 1.1 Hardware Specification References
+Additionally, the GSF SDK currently connects primarily to two carbon forecast providers (WattTime and Electricity Maps), which typically only allow scheduling windows of up to 48–72 hours [1]. We recognized an opportunity to improve this by integrating an extended forecasting model, giving our algorithm a longer time horizon to find optimal computing windows. Furthermore, since the GSF SDK inherently utilizes 5-minute time windows for its environmental telemetry, we adopted the same granularity to ensure industry alignment and maintain high-resolution scheduling accuracy.
 
-This research provides a technical breakdown of the hardware constants and energy-to-computation formulas used in the `hardwareConversion` module. The module facilitates energy-aware scheduling by converting physical power metrics into computational work units (FLOPS).
+## Technology Review & Algorithmic Considerations
 
-```cpp
---8<-- "PseudoCode/hardwareConversion.pseudo"
-```
+### Workload Execution Overheads
+During our research, we found that executing heavy AI workloads is not as simple as defining a start time. As detailed in cloud computing literature [3], instance provisioning involves a startup overhead. The user must define the hardware specifications, and the cloud provider requires time to spin up that specific instance before the workload can actually begin computing. We recognized that our scheduling algorithm needed to mathematically account for this startup penalty to reflect real-world execution accurately.
 
-The scheduler utilizes specifications for two primary NVIDIA data center GPUs. The values in our `HW_LIB` are derived from official NVIDIA technical briefs.
+### Hardware Specifications and Energy-to-Computation Modeling
+To make our scheduling algorithm truly energy-aware, we needed a methodology to translate physical power metrics into standard computational work units (FLOPS). We conducted extensive hardware research to define the constants and energy-to-computation formulas that would power our hardware conversion logic. 
 
-#### **NVIDIA Tesla V100 (PCIe)**
+We established baseline architectural profiles using official NVIDIA technical briefs for two primary data center GPUs:
+- **NVIDIA Tesla V100 (PCIe)** (250W TDP, 15.7 TFLOPS FP32) [6]
+- **NVIDIA A100 (SXM4)** (400W TDP, 19.5 TFLOPS FP32) [7]
 
-* **TDP (250W):** The Thermal Design Power represents the maximum power the GPU is expected to consume under heavy workloads.
-* **Performance (15.7 TFLOPS FP32):** Standard single-precision performance.
-* **Reference:** [NVIDIA V100 Datasheet](https://images.nvidia.com/content/technologies/volta/pdf/volta-v100-datasheet-update-us-1165301-r5.pdf)
+Using these hardware baselines, we determined that our algorithm would need to break down any given job into three distinct energy phases:
 
-#### **NVIDIA A100 (SXM4)**
+1. **Startup Phase:** Expanding on our findings regarding execution overheads, we modeled the fixed energy cost of booting and initialization. This included a BIOS phase—where server fans surge to 100% duty cycle, consuming an estimated 2.5 times the steady-state power—and an OS phase.[8] We estimated the host CPU, RAM, and NVMe overhead for initializing a container environment (like Docker or Apptainer) at approximately 100W.[9]
+2. **Model Loading Phase:** We recognized that moving data (loading models from disk to VRAM) is less power-intensive than active floating-point computation. We estimated the power draw during I/O phases to be roughly 45% of peak TDP.[10] We also noted that the duration of this phase would scale dynamically based on bus speeds (e.g., PCIe Gen3 vs. NVLink) and the specific AI workload—ranging from small Computer Vision models like ResNet-50 (~0.1 - 0.5 GB) to quantized models like Llama-3-8B (~5.0 - 8.0 GB), up to large language models exceeding 40GB.
+3. **Execution Phase:** This represents the active computation phase. We established that base server idling power typically ranges between 150W and 230W.[11] Furthermore, because even highly optimized CUDA kernels rarely hit 100% of theoretical peak performance, we capped our real-world software effectiveness rate at 95% for our "idealized" high-utilization scenarios.[12]
 
-* **TDP (400W):** The SXM4 form factor allows for higher power delivery and thermal headroom compared to PCIe.
-* **Performance (19.5 TFLOPS FP32):** Non-tensor core peak performance for standard FP32 operations.
-* **Reference:** [NVIDIA A100 Datasheet](https://www.nvidia.com/content/dam/en-zz/Solutions/Data-Center/a100/pdf/nvidia-a100-datasheet-us-nvidia-1758950-r4-web.pdf)
+By synthesizing these constants, we derived a core formula to translate physical energy into "Computational Currency":
 
----
+$$\text{FLO per kWh} = \text{Effectiveness} \times \frac{\text{TFLOPS} \times 10^{12} \times 3600}{\text{TDP} / 1000}$$
 
-### 1.2 Explanation of Hardware Constants
+Ultimately, this mathematical modeling ensured that before a single line of code was written, our system would have the theoretical framework to calculate the total computational "budget" of a job, the startup energy "tax" (expressed in FLOPS), and the specific green efficiency (kWh per FLO) of any hardware-workload pairing.
 
-| Constant | Value (Code) | Technical Justification |
-| :--- | :--- | :--- |
-| `FAN_SURGE_COEFF` | 2.5 | During the BIOS/POST phase, server fans typically spin up to 100% duty cycle to test hardware, consuming significantly more power than during steady-state operation. |
-| `CONTAINER_LOAD_W` | 100W | Estimated overhead for the Host CPU, RAM, and NVMe drives when initializing a Docker/Apptainer container environment. |
-| `TRANSFER_EFFICIENCY` | 0.45 | Data movement (loading models from disk to VRAM) is less power-intensive than active floating-point computation. We estimate power draw at 45% of peak TDP during I/O phases. |
-| `effectiveness` | 0.95 | Real-world software overhead. Even highly optimized CUDA kernels rarely hit 100% of theoretical peak TFLOPS; 95% represents an "idealized" high-utilization scenario. |
-| `sys_base` | 150-230W | Represents the "idling" power of the dual-socket server motherboard, fans, and idling CPUs that house the GPUs. |
+### Languages, Frameworks, and Architecture
+After drafting the initial sketch of our algorithm, we realized it would be computationally exhaustive. We estimated that the system would need to perform approximately $10^{10}$ operations per request. There are only a handful of programming languages capable of executing this volume of computation in a reasonable timeframe. Because half of our team possesses advanced proficiency in C++, we selected it as the language for our core scheduling engine to maximize performance. 
 
----
+For the extended forecasting component, Python was the preferred choice due to its dominant ecosystem of specialized data science libraries. It would allow us to utilize Pandas for high-performance manipulation of the 5-minute interval time-series data and NumPy for vectorized numerical operations, which ensure the preprocessing stage remained efficient despite the large data volume. To handle the actual predictive modeling, we could leverage Prophet because of its robustness in handling seasonal trends and missing data points in environmental telemetry. Additionally, we Scikit-learn provides evaluation metrics like Mean Absolute Error (MAE), which would allow us to validate the accuracy of our 7-day carbon intensity forecasts against historical benchmarks.
 
-### 1.3 Workload Scaling & Model Sizes
+Because our solution would rely on a mix of different languages, we opted for a microservices architecture communicating via standard HTTP REST APIs. We briefly considered alternative approaches, such as low-latency cross-process communication (IPC) or custom I/O protocols, but these would have introduced unnecessary complexity. Standard HTTP microservices keep the system decoupled, importantly allowing the Python prediction API to be hosted separately—meaning users can easily plug in their own prediction models if desired.
 
-The `model_size` (GB) and `length` (minutes) parameters allow the scheduler to estimate the energy cost of specific AI workloads.
+While Python has many well-known web frameworks, the choices for C++ are more specialized. We selected Drogon, a highly performant, non-blocking C++ web framework. Drogon utilizes modern C++20 features, such as coroutines, and provides excellent built-in support for databases and routing controllers. It was also specifically chosen because it consistently outperforms other C++ frameworks like Crow or Pistache in the TechEmpower Web Framework Benchmarks, often ranking among the top-performing frameworks globally [4]. 
 
-* **Average Model Sizes:**
-  * **ResNet-50 / Computer Vision:** ~0.1 - 0.5 GB (Low transfer overhead).
-  * **BERT-Base / Medium NLP:** ~0.4 - 1.0 GB.
-  * **Llama-3-8B (Quantized):** ~5.0 - 8.0 GB.
-  * **Large Language Models (LLMs):** 40GB+ (Significant `e_load` energy required).
+To manage the dense data generated by 5-minute intervals across a 7-day forecast, we paired Drogon with **PostgreSQL**. We selected PostgreSQL for its robustness and superior ability to handle rapid batch inserts, a feature we identified as critical for maintaining low-latency performance when persisting large-scale, multi-interval schedules. [5]
 
-* **Computational Translation:**
-    The function `calculate_flo_per_kwh` translates physical energy into "Computational Currency":
-    $$\text{FLO per kWh} = \text{Effectiveness} \times \frac{\text{TFLOPS} \times 10^{12} \times 3600}{\text{TDP} / 1000}$$
-    This allows the scheduler to compare the "Green Efficiency" of different hardware generations.
+### Summary of Technical Decisions
+Based on our research and project constraints, we finalized the following technical stack:   
+-   **Core Algorithm Engine:** C++ (chosen for execution speed and handling high computational complexity).  
+-   **C++ Web Framework:** Drogon (chosen for its non-blocking architecture, modern C++20 support, and high throughput).  
+-   **Forecasting Service:** Python (chosen for its extensive statistical and machine learning libraries).  
+-   **Frontend Interface:** React (chosen for dynamic component rendering and interactive data visualization).  
+-   **System Architecture:** HTTP Microservices (chosen for ease of integration, separation of concerns, and API modularity).  
+-   **Algorithmic Approach:** Multi-interval scheduling with startup-overhead awareness (chosen to capitalize on AI workload parallelization).  
 
----
-
-### 1.4 Energy Calculation Methodology
-
-The scheduler breaks down a job into three distinct energy phases:
-
-#### **A. Startup Phase (`get_startup_energy_kwh`)**
-
-Divided into the **BIOS Phase** (high fan usage) and **OS Phase** (base system + container initialization). This is a fixed cost regardless of the task length.
-
-* *V100 Estimate:* ~0.02 - 0.04 kWh per boot.
-
-#### **B. Model Loading Phase (`get_load_energy_kwh`)**
-
-Calculates the energy used while the `bus_gbps` (PCIe Gen3 vs NVLink) transfers the model into VRAM.
-
-* **Formula:** $\text{Power}_{\text{load}} \times (\text{Model Size} / \text{Bus Speed})$.
-
-#### **C. Execution Phase (`get_workload_amount`)**
-
-The active computation phase. The total "work" is defined as the total FLOPS capable of being produced during the requested `length` at full power.
-
-### 1.5 Summary of Calculated Outputs
-
-When `convertRawJobRequest` is called, it returns:
-
-1. **Startup Overhead:** The energy "tax" of booting and loading the model, expressed in FLOPS.
-2. **Workload Amount:** The total computational "budget" of the job.
-3. **kWh per FLO:** The inverse efficiency, used to calculate the final carbon footprint or electricity cost of the specific hardware-workload pairing.
+### References
+[1] Green Software Foundation, "Carbon Aware SDK Documentation," GitHub, 2023. [Online]. Available: [https://github.com/Green-Software-Foundation/carbon-aware-sdk](https://github.com/Green-Software-Foundation/carbon-aware-sdk). [Accessed: Mar. 2026].  <br>
+[2] P. Goyal et al., "Accurate, Large Minibatch SGD: Training ImageNet in 1 Hour," arXiv:1706.02677 [cs.CV], Jun. 2017. [Online]. 
+Available: [https://doi.org/10.48550/arXiv.1706.02677](https://doi.org/10.48550/arXiv.1706.02677) <br>
+[3] M. Mao and M. Humphrey, "A Performance Study on the VM Startup Time in the Cloud," in Proc. IEEE 5th Int. Conf. Cloud Comput. (CLOUD), 2012. [Online].
+Available: [https://ieeexplore.ieee.org/document/6253534](https://ieeexplore.ieee.org/document/6253534) <br>
+[4] TechEmpower, "Framework Benchmarks Round 19," TechEmpower Blog, May 2020. [Online]. Available: [https://www.techempower.com/benchmarks/#section=data-r19](https://www.techempower.com/benchmarks/#section=data-r19) <br>
+[5] R. S. S. Kumar and S. M. Kumar, "Performance Analysis of PostgreSQL and MySQL Databases for Large Scale Data," in Proc. 2023 7th Int. Conf. Intell. Comput. Control Syst. (ICICCS), 2023. [Online]. Available: [https://www.mdpi.com/1999-5903/16/10/382](https://www.mdpi.com/1999-5903/16/10/382)
+[6] NVIDIA Corp., "NVIDIA Tesla V100 GPU Accelerator Datasheet," 2020. [Online]. Available: [https://images.nvidia.com/content/technologies/volta/pdf/tesla-volta-v100-datasheet-letter-fnl-web.pdf](https://images.nvidia.com/content/technologies/volta/pdf/tesla-volta-v100-datasheet-letter-fnl-web.pdf)  
+[7] NVIDIA Corp., "NVIDIA A100 Tensor Core GPU Datasheet," 2021. [Online]. Available: [https://www.nvidia.com/content/dam/en-zz/Solutions/Data-Center/a100/pdf/nvidia-a100-datasheet-us-nvidia-1758950-r4-web.pdf](https://www.nvidia.com/content/dam/en-zz/Solutions/Data-Center/a100/pdf/nvidia-a100-datasheet-us-nvidia-1758950-r4-web.pdf)  
+[8] M. Ogle, T. Mottershead, Dell Technologies, "PowerEdge Server Power and Cooling Trends," Technical White Paper, 2023. [Online] Available: [https://www.delltechnologies.com/asset/en-ph/products/servers/industry-market/the-future-of-server-cooling-part-1.pdf](https://www.delltechnologies.com/asset/en-ph/products/servers/industry-market/the-future-of-server-cooling-part-1.pdf)  
+[9] C. Centofanti, J. Santos, Venkateswarlu Gudepu, and Koteswararao Kondepu, “Impact of power consumption in containerized clouds: A comprehensive analysis of open-source power measurement tools,” Computer networks (1999), pp. 110371–110371, Mar. 2024, doi [Online] Available: [https://doi.org/10.1016/j.comnet.2024.110371](https://doi.org/10.1016/j.comnet.2024.110371.)  
+[10] J. G. Koomey, "Estimating Total Power Consumption by Servers in the U.S. and the World," Stanford University Publication, 2021. [Online] Available: [https://www.researchgate.net/publication/228365136_Estimating_Total_Power_Consumption_by_Servers_in_the_US_and_the_World](https://www.researchgate.net/publication/228365136_Estimating_Total_Power_Consumption_by_Servers_in_the_US_and_the_World)  
+[11] U.S. Environmental Protection Agency, "ENERGY STAR Program Requirements for Computer Servers," Version 3.0, 2023. [Online] Available: [https://www.energystar.gov/sites/default/files/2025-04/ENERGY%20STAR%20Version%204.0%20Computer%20Servers%20Final%20Specification.pdf](https://www.energystar.gov/sites/default/files/2025-04/ENERGY%20STAR%20Version%204.0%20Computer%20Servers%20Final%20Specification.pdf)  
+[12] W. Luo et al., “Dissecting the NVIDIA Hopper Architecture through Microbenchmarking and Multiple Level Analysis,” arXiv.org, 2025. [https://arxiv.org/abs/2501.12084](https://arxiv.org/abs/2501.12084)  
 
 ---
 
 ## Forecasting Model Research
 
-This section presents the research behind our choice of production forecasting model for the Stats service. The forecasting system predicts carbon intensity (gCO2/kWh) for 5 UK regions, 7 days into the future at 30-minute intervals (336 steps per region per cycle). Through systematic experimentation across 18+ model architectures and 5 phases of refinement, we arrived at **RidgeFull** -- an enhanced Ridge regression model achieving MAE 24.88. For detailed experimental data, see the [AI Research Journal](dev-journal.md).
+While the previously discussed C++ scheduling engine handles the workload distribution, its environmental effectiveness is strictly bound by the accuracy of the carbon data it consumes. Therefore, this section presents the research behind our choice of production forecasting model for the Stats service. The forecasting system predicts carbon intensity (gCO2/kWh) for 5 UK regions, 7 days into the future at 30-minute intervals (336 steps per region per cycle). Through systematic experimentation across 18+ model architectures and 5 phases of refinement, we arrived at **RidgeFull** enhanced Ridge regression model achieving an MAE of 24.88. For detailed experimental data, see the [AI Research Journal](dev-journal.md).
 
 ### 2.1 Key Concepts and Terminology
 
@@ -255,5 +232,5 @@ The reasons are structural: (1) the target is a single low-dimensional time seri
 
 ### References
 
-[1] P. Bauer, A. Thorpe, and G. Brunet, "The quiet revolution of numerical weather prediction," *Nature*, vol. 525, no. 7567, pp. 47--55, Sep. 2015, doi: 10.1038/nature14956.
+[13] P. Bauer, A. Thorpe, and G. Brunet, "The quiet revolution of numerical weather prediction," *Nature*, vol. 525, no. 7567, pp. 47--55, Sep. 2015, doi: 10.1038/nature14956.
 
