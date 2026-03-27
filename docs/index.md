@@ -86,7 +86,7 @@ This upcoming presentation is not a mere dissemination of academic research. The
 
     ---
 
-    ![Rithwik](images/rithwik.png)
+    ![Rithwik](images/rithwik.png){ width=60% }
 
     Frontend Developer for the Carbon Aware Scheduler
 
